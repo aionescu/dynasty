@@ -1,0 +1,73 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Dynasty",
+	"patterns": [
+		{ "include": "#keywords" },
+		{ "include": "#numbers" },
+		{ "include": "#ctors" },
+		{ "include": "#comments" },
+		{ "include": "#strings" },
+		{ "include": "#chars" }
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.dy",
+				"match": "\\b(let|in|if|then|else)\\b"
+			}]
+    },
+    "numbers": {
+      "patterns": [{
+        "name": "constant.numeric.dy",
+        "match": "\\b-?[0-9]+\\b"
+      }]
+    },
+    "ctors": {
+      "patterns": [{
+        "name": "support.function.dy",
+        "match": "\\b[A-Z][a-z]*\\b"
+      }]
+    },
+    "comments": {
+      "patterns": [{
+        "name": "comment.double-dash.dy",
+        "match": "--.*$"
+      }, {
+        "name": "comment.number-sign.dy",
+        "match": "^#.*$"
+      }, {
+        "name": "comment.block.dy",
+        "begin": "{-",
+        "beginCaptures": { "0": { "name": "punctuation.definition.comment.dy" }},
+        "end": "-}",
+        "endCaptues": { "0": { "name": "punctuation.definition.comment.dy" }},
+        "patterns": [{ "include": "#comments" }]
+      }]
+    },
+		"strings": {
+			"name": "string.quoted.double.dy",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.dy",
+					"match": "\\\\."
+				}
+			]
+    },
+    "chars": {
+			"name": "string.quoted.single.dy",
+			"patterns": [
+				{
+					"name": "constant.character.escape.dy",
+					"match": "'\\\\.'"
+        },
+        {
+					"name": "string.quoted.single.dy",
+					"match": "'.'"
+				}
+			]
+		}
+	},
+	"scopeName": "source.dy"
+}

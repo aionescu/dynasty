@@ -1,0 +1,25 @@
+{
+    "name": "dy-vscode",
+    "displayName": "Dynasty Syntax Highlighting",
+    "description": "Dynasty Syntax Highlighting",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.50.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "dy",
+            "aliases": ["Dynasty", "dy"],
+            "extensions": [".dy"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "dy",
+            "scopeName": "source.dy",
+            "path": "./syntaxes/dy.tmLanguage.json"
+        }]
+    }
+}

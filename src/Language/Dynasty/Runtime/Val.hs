@@ -41,41 +41,36 @@ instance ToVal Integer where
   toVal = Num
 
 instance OfVal Integer where
-  ofVal = \case
-    Num i -> Just i
-    _ -> Nothing
+  ofVal (Num i) = Just i
+  ofVal _ = Nothing
 
 instance ToVal Char where
   toVal = Char
 
 instance OfVal Char where
-  ofVal = \case
-    Char c -> Just c
-    _ -> Nothing
+  ofVal (Char c) = Just c
+  ofVal _ = Nothing
 
 instance ToVal Bool where
   toVal b = Ctor (show b) []
 
 instance OfVal Bool where
-  ofVal = \case
-    Ctor i [] -> readMaybe i
-    _ -> Nothing
+  ofVal (Ctor i []) = readMaybe i
+  ofVal _ = Nothing
 
 instance ToVal a => ToVal (IO a) where
   toVal = IO . (toVal <$>)
 
 instance OfVal (IO Val) where
-  ofVal = \case
-    IO v -> Just v
-    _ -> Nothing
+  ofVal (IO io) = Just io
+  ofVal _ = Nothing
 
 instance ToVal () where
   toVal _ = Ctor "Tuple" []
 
 instance OfVal () where
-  ofVal = \case
-    Ctor "Tuple" [] -> Just ()
-    _ -> Nothing
+  ofVal (Ctor "Tuple" []) = Just ()
+  ofVal _ = Nothing
 
 -- TODO: GHC.Generic-based default implementations
 instance ToVal a => ToVal [a] where
@@ -83,36 +78,33 @@ instance ToVal a => ToVal [a] where
   toVal (a : as) = Ctor "::" [toVal a, toVal as]
 
 instance OfVal a => OfVal [a] where
-  ofVal = \case
-    Ctor "Nil" [] -> Just []
-    Ctor "::" [a, as] -> (:) <$> ofVal a <*> ofVal as
-    _ -> Nothing
+  ofVal (Ctor "Nil" []) = Just []
+  ofVal (Ctor "::" [a, as]) = (:) <$> ofVal a <*> ofVal as
+  ofVal _ = Nothing
 
 instance ToVal a => ToVal (Maybe a) where
   toVal Nothing = Ctor "Nothing" []
   toVal (Just a) = Ctor "Just" [toVal a]
 
 instance OfVal a => OfVal (Maybe a) where
-  ofVal = \case
-    Ctor "Nothing" [] -> Just Nothing
-    Ctor "Just" [a] -> Just <$> ofVal a
-    _ -> Nothing
+  ofVal (Ctor "Nothing" []) = Just Nothing
+  ofVal (Ctor "Just" [a]) = Just <$> ofVal a
+  ofVal _ = Nothing
 
 instance (OfVal a, ToVal b) => ToVal (a -> b) where
   toVal f = Fn $ maybe (exn "Input failed in ofVal @(a -> b).") (toVal . f) . ofVal
 
 instance OfVal (Val -> Val) where
-  ofVal = \case
-    Fn f -> Just f
-    _ -> Nothing
+  ofVal (Fn f) = Just f
+  ofVal _ = Nothing
 
 instance OfVal (Val -> IO Val) where
-  ofVal = \case
-    Fn f ->
-      Just \a -> case f a of
-        IO v -> v
-        _ -> pure $ exn "Expected IO value, found pure value"
-    _ -> Nothing
+  ofVal (Fn f) = Just \a ->
+    case f a of
+      IO v -> v
+      _ -> pure $ exn "Expected IO value, found pure value"
+
+  ofVal _ = Nothing
 
 showIdent :: String -> String
 showIdent i | isLetter $ head i = i

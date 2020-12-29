@@ -4,8 +4,8 @@ import Control.Exception(catch)
 import Control.Exception.Base(SomeException)
 import Data.Char(isLetter)
 import Data.List(intercalate)
-import Data.Map.Strict(Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Lazy(Map)
+import qualified Data.Map.Lazy as M
 import System.IO.Unsafe(unsafePerformIO)
 import Text.Read(readMaybe)
 

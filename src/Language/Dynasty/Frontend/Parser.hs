@@ -4,8 +4,8 @@ import Data.Bifunctor(first)
 import Data.Char(isUpper, isLower)
 import Data.Functor((<&>), ($>))
 import Data.List(foldl', nub)
-import Data.Map.Strict(Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Lazy(Map)
+import qualified Data.Map.Lazy as M
 import Control.Monad.Except(liftEither, MonadError)
 import Text.Parsec hiding (parse)
 

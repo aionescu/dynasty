@@ -1,15 +1,16 @@
 module Language.Dynasty.Runtime.Eval(eval) where
 
+import Control.Monad.Fix(MonadFix(mfix))
 import Control.Monad.Reader(runReader, Reader, asks, MonadReader(local))
 import Data.Functor((<&>))
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Lazy as M
 import Data.Maybe(fromMaybe)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.Prelude
 
-evalExpr :: MonadReader Env m => Expr -> m Val
+evalExpr :: (MonadFix m, MonadReader Env m) => Expr -> m Val
 evalExpr (NumLit i) = pure $ Num i
 evalExpr (CharLit b) = pure $ Char b
 evalExpr (Var i) = asks $ fromMaybe (exn "Variable not declared") . M.lookup i
@@ -40,7 +41,7 @@ evalExpr (If cond then' else') = do
     _ -> pure $ exn "Condition of an If must be True or False"
 
 evalExpr (Let i v e) = do
-  v' <- evalExpr v
+  v' <- mfix \v' -> local (M.insert i v') $ evalExpr v
   local (M.insert i v') $
     evalExpr e
 

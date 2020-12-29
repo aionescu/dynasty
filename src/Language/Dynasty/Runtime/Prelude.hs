@@ -1,8 +1,9 @@
 module Language.Dynasty.Runtime.Prelude where
 
 import Data.Function(fix)
-import Data.Map.Strict(Map)
-import qualified Data.Map.Strict as M
+import Data.Map.Lazy(Map)
+import qualified Data.Map.Lazy as M
+import Debug.Trace(trace)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
@@ -39,4 +40,5 @@ prelude =
   , ("==", toVal $ (==) @Val)
   , (".", toVal $ (.) @Val @Val @Val)
   , ("&", toVal mergeRecords)
+  , ("trace", toVal $ trace @Val)
   ]

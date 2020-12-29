@@ -1,6 +1,6 @@
 module Language.Dynasty.Frontend.Syntax where
 
-import Data.Map.Strict(Map)
+import Data.Map.Lazy(Map)
 
 type Ident = String
 

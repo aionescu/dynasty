@@ -5,11 +5,11 @@ import Data.Map.Strict(Map)
 type Ident = String
 
 data Expr
-  = IntLit Integer
+  = NumLit Integer
   | CharLit Char
   | RecLit (Map Ident Expr)
   | Var Ident
-  | Ctor Ident [Expr]
+  | CtorLit Ident [Expr]
   | RecMember Expr Ident
   | Lam Ident Expr
   | App Expr Expr

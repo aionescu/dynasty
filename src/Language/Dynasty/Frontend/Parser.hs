@@ -85,14 +85,14 @@ strRaw :: Parser String
 strRaw = parens '"' '"' $ many $ escaped '"'
 
 int :: Parser Expr
-int = IntLit <$> intRaw
+int = NumLit <$> intRaw
 
 char' :: Parser Expr
 char' = CharLit <$> charRaw
 
 explode :: (a -> Expr) -> [a] -> Expr
-explode _ [] = Ctor "Nil" []
-explode f (c : cs) = Ctor "::" [f c, explode f cs]
+explode _ [] = CtorLit "Nil" []
+explode f (c : cs) = CtorLit "::" [f c, explode f cs]
 
 str :: Parser Expr
 str = explode CharLit <$> strRaw
@@ -161,10 +161,10 @@ var :: Parser Expr
 var = Var <$> varIdent
 
 ctorSimple :: Parser Expr
-ctorSimple = (`Ctor` []) <$> ctorIdent
+ctorSimple = (`CtorLit` []) <$> ctorIdent
 
 tupLit :: Parser Expr
-tupLit = tuple (Ctor "Tuple") expr
+tupLit = tuple (CtorLit "Tuple") expr
 
 recLit :: Parser Expr
 recLit = RecLit <$> record expr
@@ -196,13 +196,13 @@ exprMember :: Parser Expr
 exprMember = foldl' RecMember <$> exprSimple <*> many (char '.' *> varIdent)
 
 appHead :: Parser ([Expr] -> Expr)
-appHead = (try (Ctor <$> ctorIdent) <|> foldl' App <$> exprMember) <* ws
+appHead = (try (CtorLit <$> ctorIdent) <|> foldl' App <$> exprMember) <* ws
 
 exprApp :: Parser Expr
 exprApp = appHead <*> many (exprMember <* ws)
 
 appCtor :: Ident -> Expr -> Expr -> Expr
-appCtor c a b = Ctor c [a, b]
+appCtor c a b = CtorLit c [a, b]
 
 exprCtorOps :: Parser Expr
 exprCtorOps = chainl1 exprApp $ try $ appCtor <$> (ctorInfix <* ws)

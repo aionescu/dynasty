@@ -10,17 +10,17 @@ import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.Prelude
 
 evalExpr :: MonadReader Env m => Expr -> m Val
-evalExpr (IntLit i) = pure $ Int i
+evalExpr (NumLit i) = pure $ Num i
 evalExpr (CharLit b) = pure $ Char b
 evalExpr (Var i) = asks $ fromMaybe (exn "Variable not declared") . M.lookup i
 
 evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
-evalExpr (Ctor i es) = VCtor i <$> traverse evalExpr es
+evalExpr (CtorLit i es) = Ctor i <$> traverse evalExpr es
 
 evalExpr (Lam i e) =
   asks \env ->
-    VFun \a ->
+    Fn \a ->
       runReader (evalExpr e) (M.insert i a env)
 
 evalExpr (RecMember e i) = evalExpr e <&> \case
@@ -29,14 +29,14 @@ evalExpr (RecMember e i) = evalExpr e <&> \case
 
 evalExpr (App f a) =
   evalExpr f >>= \case
-    VFun f' -> f' <$> evalExpr a
+    Fn f' -> f' <$> evalExpr a
     _ -> pure $ exn "LHS of App must be a function."
 
 evalExpr (If cond then' else') = do
   c' <- evalExpr cond
   case c' of
-    VCtor "True" [] -> evalExpr then'
-    VCtor "False" [] -> evalExpr else'
+    Ctor "True" [] -> evalExpr then'
+    Ctor "False" [] -> evalExpr else'
     _ -> pure $ exn "Condition of an If must be True or False"
 
 evalExpr (Let i v e) = do
@@ -46,7 +46,7 @@ evalExpr (Let i v e) = do
 
 printVal :: Val -> IO ()
 printVal (IO io) = io >>= printVal
-printVal (VCtor "Tuple" []) = pure ()
+printVal (Ctor "Tuple" []) = pure ()
 printVal v = print v
 
 runEval :: Reader Env Val -> IO ()

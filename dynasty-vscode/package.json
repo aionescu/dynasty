@@ -1,6 +1,6 @@
 {
-    "name": "dy-vscode",
-    "displayName": "Dynasty Syntax Highlighting",
+    "name": "dynasty-vscode",
+    "displayName": "Dynasty",
     "description": "Dynasty Syntax Highlighting",
     "version": "0.0.1",
     "engines": {

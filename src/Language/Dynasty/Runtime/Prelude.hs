@@ -17,6 +17,14 @@ mergeRecords :: Val -> Val -> Val
 mergeRecords (Rec as) (Rec bs) = Rec $ M.union bs as
 mergeRecords _ _ = exn "Need records for merge"
 
+typeOf :: Val -> Val
+typeOf (Num _) = Ctor "Num" []
+typeOf (Char _) = Ctor "Char" []
+typeOf (Ctor i _) = Ctor "Ctor" [toVal i]
+typeOf (Rec m) = Ctor "Rec" [toVal $ M.keys m]
+typeOf (Fn _) = Ctor "Fn" []
+typeOf (IO _) = Ctor "IO" []
+
 prelude :: Env
 prelude =
   M.fromList
@@ -41,4 +49,5 @@ prelude =
   , (".", toVal $ (.) @Val @Val @Val)
   , ("&", toVal mergeRecords)
   , ("trace", toVal $ trace @Val)
+  , ("typeOf", toVal typeOf)
   ]

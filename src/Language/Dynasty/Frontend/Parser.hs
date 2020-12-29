@@ -51,8 +51,8 @@ record rhs = M.fromList <$> (unique =<< parens '{' '}' elems)
           then pure es
           else fail "Fields in a record must be unique"
 
-list :: Parser Expr
-list = explode id <$> parens '[' ']' ((expr <* ws) `sepEndBy` comma)
+list :: Parser (Expr a) -> Parser (Expr a)
+list p = explode id <$> parens '[' ']' ((p <* ws) `sepEndBy` comma)
 
 number :: (Read a, Num a) => Parser a
 number = read <$> many1 digit
@@ -84,27 +84,27 @@ charRaw = parens '\'' '\'' $ escaped '\''
 strRaw :: Parser String
 strRaw = parens '"' '"' $ many $ escaped '"'
 
-int :: Parser Expr
+int :: Parser (Expr a)
 int = NumLit <$> intRaw
 
-char' :: Parser Expr
+char' :: Parser (Expr a)
 char' = CharLit <$> charRaw
 
-explode :: (a -> Expr) -> [a] -> Expr
+explode :: (a -> Expr k) -> [a] -> Expr k
 explode _ [] = CtorLit "Nil" []
 explode f (c : cs) = CtorLit "::" [f c, explode f cs]
 
-str :: Parser Expr
+str :: Parser (Expr a)
 str = explode CharLit <$> strRaw
 
-simpleLit :: Parser Expr
+simpleLit :: Parser (Expr a)
 simpleLit = try str <|> try char' <|> int
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "if", "then", "else"]
+reservedNames = ["let", "in", "match"]
 
 reservedOps :: [String]
-reservedOps = ["->"]
+reservedOps = ["->", "|", "_", ":"]
 
 identRaw :: Parser String
 identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar
@@ -119,7 +119,7 @@ identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar
 opRaw :: Parser String
 opRaw = notReserved =<< many1 opChar
   where
-    opChar = oneOf "!#$%&*+./<=>?@\\^|-~:;"
+    opChar = oneOf "!#$%&*+./<=>?@\\^|-~:;_"
 
     notReserved i
       | i `elem` reservedOps = fail "Reserved operator"
@@ -157,67 +157,86 @@ varInfix = try varOp <|> parens '`' '`' varName
 ctorInfix :: Parser String
 ctorInfix = try ctorOp <|> parens '`' '`' ctorName
 
-var :: Parser Expr
+var :: Parser (Expr a)
 var = Var <$> varIdent
 
-ctorSimple :: Parser Expr
+ctorSimple :: Parser (Expr a)
 ctorSimple = (`CtorLit` []) <$> ctorIdent
 
-tupLit :: Parser Expr
-tupLit = tuple (CtorLit "Tuple") expr
+tupLit :: Parser (Expr a) -> Parser (Expr a)
+tupLit = tuple (CtorLit "Tuple")
 
-recLit :: Parser Expr
-recLit = RecLit <$> record expr
+recLit :: Parser (Expr a) -> Parser (Expr a)
+recLit p = RecLit <$> record p
 
-if' :: Parser Expr
-if' =
-  If
-  <$> (string "if" *> ws *> expr <* ws)
-  <*> (string "then" *> ws *> expr <* ws)
-  <*> (string "else" *> ws *> expr <* ws)
-
-lam :: Parser Expr
+lam :: Parser (Expr 'E)
 lam = mkLam <$> (many1 (varIdent <* ws) <* string "->" <* ws) <*> expr
   where
     mkLam [] e = e
     mkLam (i : as) e = Lam i $ mkLam as e
 
-let' :: Parser Expr
+let' :: Parser (Expr 'E)
 let' =
   Let
   <$> (string "let" *> ws *> varIdent)
   <*> (equals *> expr)
   <*> (ws *> string "in" *> ws *> expr)
 
-exprSimple :: Parser Expr
-exprSimple = choice (try <$> [lam, let', if', recLit, list, tupLit, simpleLit, ctorSimple, var]) <* ws
+match :: Parser (Expr 'E)
+match = Match <$> (string "match" *> ws *> expr <* ws) <*> many branch
+  where
+    branch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
 
-exprMember :: Parser Expr
-exprMember = foldl' RecMember <$> exprSimple <*> many (char '.' *> varIdent)
+exprSimple :: Parser (Expr 'E)
+exprSimple = choice (try <$> [match, lam, let', recLit expr, list expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
 
-appHead :: Parser ([Expr] -> Expr)
+wildcard :: Parser (Expr 'P)
+wildcard = char '_' $> Wildcard
+
+ofType :: Parser (Expr 'P)
+ofType = OfType <$> (varIdent <* colon) <*> pat
+
+patSimple :: Parser (Expr 'P)
+patSimple = choice (try <$> [ofType, wildcard, recLit pat, list pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
+
+patCtorApp :: Parser (Expr 'P)
+patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> many (patSimple <* ws)) <|> patSimple
+
+patCtorOps :: Parser (Expr 'P)
+patCtorOps = chainl1 patCtorApp $ try $ appCtor <$> (ctorInfix <* ws)
+
+pat :: Parser (Expr 'P)
+pat = patCtorOps
+
+member :: Parser (Expr 'E)
+member = foldl' RecMember <$> exprSimple <*> try (many1 (char '.' *> varIdent))
+
+exprMember :: Parser (Expr 'E)
+exprMember = try member <|> exprSimple
+
+appHead :: Parser ([Expr 'E] -> Expr 'E)
 appHead = (try (CtorLit <$> ctorIdent) <|> foldl' App <$> exprMember) <* ws
 
-exprApp :: Parser Expr
+exprApp :: Parser (Expr 'E)
 exprApp = appHead <*> many (exprMember <* ws)
 
-appCtor :: Ident -> Expr -> Expr -> Expr
+appCtor :: Ident -> Expr a -> Expr a -> Expr a
 appCtor c a b = CtorLit c [a, b]
 
-exprCtorOps :: Parser Expr
+exprCtorOps :: Parser (Expr 'E)
 exprCtorOps = chainl1 exprApp $ try $ appCtor <$> (ctorInfix <* ws)
 
-appVar :: Ident -> Expr -> Expr -> Expr
+appVar :: Ident -> Expr 'E -> Expr 'E -> Expr 'E
 appVar v = App . App (Var v)
 
-exprVarOps :: Parser Expr
+exprVarOps :: Parser (Expr 'E)
 exprVarOps = chainr1 exprCtorOps $ appVar <$> (varInfix <* ws)
 
-expr :: Parser Expr
+expr :: Parser (Expr 'E)
 expr = exprVarOps
 
-program :: Parser Expr
+program :: Parser (Expr 'E)
 program = option () shebang *> ws *> expr <* eof
 
-parse :: MonadError String m => String -> m Expr
+parse :: MonadError String m => String -> m (Expr 'E)
 parse = liftEither . first show . runParser program () ""

@@ -1,0 +1,6 @@
+let fac = n ->
+  match n
+  | 0 -> 1
+  | n : Num -> n * fac (n - 1)
+in
+fac 100

@@ -1,7 +1,11 @@
 module Language.Dynasty.Runtime.Eval(eval) where
 
+import Control.Monad(zipWithM_)
+import Control.Monad.Except(MonadError(throwError))
 import Control.Monad.Fix(MonadFix(mfix))
-import Control.Monad.Reader(runReader, Reader, asks, MonadReader(local))
+import Control.Monad.Reader(runReader, Reader, asks, MonadReader(ask, local))
+import Control.Monad.State(execStateT, modify, MonadState)
+import Data.Foldable(traverse_)
 import Data.Functor((<&>))
 import qualified Data.Map.Lazy as M
 import Data.Maybe(fromMaybe)
@@ -10,7 +14,7 @@ import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.Prelude
 
-evalExpr :: (MonadFix m, MonadReader Env m) => Expr -> m Val
+evalExpr :: (MonadFix m, MonadReader Env m) => Expr 'E -> m Val
 evalExpr (NumLit i) = pure $ Num i
 evalExpr (CharLit b) = pure $ Char b
 evalExpr (Var i) = asks $ fromMaybe (exn "Variable not declared") . M.lookup i
@@ -33,17 +37,46 @@ evalExpr (App f a) =
     Fn f' -> f' <$> evalExpr a
     _ -> pure $ exn "LHS of App must be a function."
 
-evalExpr (If cond then' else') = do
-  c' <- evalExpr cond
-  case c' of
-    Ctor "True" [] -> evalExpr then'
-    Ctor "False" [] -> evalExpr else'
-    _ -> pure $ exn "Condition of an If must be True or False"
-
 evalExpr (Let i v e) = do
   v' <- mfix \v' -> local (M.insert i v') $ evalExpr v
   local (M.insert i v') $
     evalExpr e
+
+evalExpr (Match e ps) = evalExpr e >>= \v -> tryBranches v ps
+
+tryBranch :: Env -> Val -> Expr 'P -> Maybe Env
+tryBranch env v p =
+    case execStateT (evalPat v p) env of
+    Left _ -> Nothing
+    Right e -> Just e
+
+tryBranches :: (MonadFix m, MonadReader Env m) => Val -> [(Expr 'P, Expr 'E)] -> m Val
+tryBranches _ [] = pure $ exn "Incomplete pattern match"
+tryBranches v ((p, e) : ps) =
+  ask >>= \env ->
+    case tryBranch env v p of
+      Nothing -> tryBranches v ps
+      Just newEnv -> local (const newEnv) $ evalExpr e
+
+fail' :: MonadError () m => m a
+fail' = throwError ()
+
+evalPat :: (MonadState Env m, MonadError () m) => Val -> Expr 'P -> m ()
+evalPat v (Var i) = modify (M.insert i v)
+evalPat (Num n) (NumLit m)
+  | m == n = pure ()
+  | otherwise = fail'
+evalPat (Char c) (CharLit d)
+  | c == d = pure ()
+  | otherwise = fail'
+evalPat (Ctor c vs) (CtorLit c' ps)
+  | c == c' && length vs == length ps = zipWithM_ evalPat vs ps
+evalPat (Rec m) (RecLit m')
+  | M.null $ M.difference m' m = traverse_ (uncurry evalPat) $ M.elems $ M.intersectionWith (,) m m'
+  | otherwise = fail'
+evalPat v (OfType i p) = evalPat (typeOf v) p *> modify (M.insert i v)
+evalPat _ Wildcard = pure ()
+evalPat _ _ = fail'
 
 printVal :: Val -> IO ()
 printVal (IO io) = io >>= printVal
@@ -53,5 +86,5 @@ printVal v = print v
 runEval :: Reader Env Val -> IO ()
 runEval m = printVal $ runReader m prelude
 
-eval :: Expr -> IO ()
+eval :: Expr 'E -> IO ()
 eval = runEval . evalExpr

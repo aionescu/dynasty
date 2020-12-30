@@ -37,9 +37,12 @@ evalExpr (App f a) =
     Fn f' -> f' <$> evalExpr a
     _ -> pure $ exn "LHS of App must be a function."
 
-evalExpr (Let i v e) = do
-  v' <- mfix \v' -> local (M.insert i v') $ evalExpr v
-  local (M.insert i v') $
+evalExpr (Let bs e) = do
+  vs' <- mfix \vs' ->
+    local (M.union vs') $
+      traverse evalExpr bs
+
+  local (M.union vs') $
     evalExpr e
 
 evalExpr (Match e ps) = evalExpr e >>= \v -> tryBranches v ps

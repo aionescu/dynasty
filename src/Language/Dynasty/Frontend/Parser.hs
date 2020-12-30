@@ -101,7 +101,7 @@ simpleLit :: Parser (Node a)
 simpleLit = try str <|> try char' <|> int
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "match"]
+reservedNames = ["match", "let", "and", "in"]
 
 reservedOps :: [String]
 reservedOps = ["\\", "->", "|", "_", ":"]
@@ -175,12 +175,24 @@ lam = mkLam <$> (char '\\' *> ws *> many1 (varIdent <* ws) <* char '.' <* ws) <*
     mkLam [] e = e
     mkLam (i : as) e = Lam i $ mkLam as e
 
+binding :: Parser (Ident, Expr)
+binding = try $ (,) <$> (varIdent <* ws) <*> (equals *> expr <* ws)
+
+bindingGroup :: Parser BindingGroup
+bindingGroup = binding `sepBy1` try (string "and" *> ws) >>= ensureUnique
+  where
+    ensureUnique bs =
+      let is = fst <$> bs
+      in
+        if is == nub is
+        then pure $ M.fromList bs
+        else fail "Duplicate definition in binding group"
+
 let' :: Parser Expr
 let' =
   Let
-  <$> (string "let" *> ws *> varIdent)
-  <*> (equals *> expr)
-  <*> (ws *> string "in" *> ws *> expr)
+  <$> try (string "let" *> ws *> bindingGroup)
+  <*> (string "in" *> ws *> expr)
 
 match :: Parser Expr
 match = Match <$> (string "match" *> ws *> expr <* ws) <*> many branch
@@ -188,7 +200,7 @@ match = Match <$> (string "match" *> ws *> expr <* ws) <*> many branch
     branch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
 
 exprSimple :: Parser Expr
-exprSimple = choice (try <$> [match, lam, let', recLit expr, list expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
+exprSimple = choice (try <$> [let', match, lam, recLit expr, list expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
 
 wildcard :: Parser Pat
 wildcard = char '_' $> Wildcard

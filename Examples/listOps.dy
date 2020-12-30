@@ -29,4 +29,9 @@ let map = \f l.
   | [] -> []
   | a :: as -> f a :: map f as
 in
-print (map ((+) 2) (1 .. 100))
+print (map ((+) 2) (1 .. 100)) *>
+
+-- Mutual recursion
+let a = 1 :: b
+and b = 2 :: a
+in print (take 20 a)

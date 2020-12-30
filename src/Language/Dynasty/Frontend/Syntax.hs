@@ -16,12 +16,14 @@ data Node :: NodeKind -> * where
   RecMember :: Expr -> Ident -> Expr
   Lam :: Ident -> Expr -> Expr
   App :: Expr -> Expr -> Expr
-  Let :: Ident -> Expr -> Expr -> Expr
+  Let :: BindingGroup -> Expr -> Expr
   Match :: Expr -> [(Pat, Expr)] -> Expr
   OfType :: Ident -> Pat -> Pat
   Wildcard :: Pat
 
+deriving instance Show (Node a)
+
 type Expr = Node 'E
 type Pat = Node 'P
 
-deriving instance Show (Node a)
+type BindingGroup = Map Ident Expr

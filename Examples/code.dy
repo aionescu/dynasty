@@ -1,0 +1,2 @@
+a = True 1 2 3 and
+main = print (read (show a))

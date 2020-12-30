@@ -7,9 +7,11 @@ import Data.List(intercalate)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import System.IO.Unsafe(unsafePerformIO)
+import Text.Parsec
 import Text.Read(readMaybe)
 
 import Language.Dynasty.Frontend.Syntax
+import Language.Dynasty.Frontend.Parser hiding (parse)
 
 data Val
   = Num Integer
@@ -144,7 +146,7 @@ showVal :: Bool -> Val -> String
 showVal _ (Num i) = show i
 showVal _ (Char c) = show c
 showVal _ (Rec m) = showRecord m
-showVal parens (Ctor i as) = showCtor parens i as
+showVal needParens (Ctor i as) = showCtor needParens i as
 showVal _ Fn{} = "<λ>"
 showVal _ IO{} = "<🗲>"
 
@@ -157,3 +159,54 @@ instance Eq Val where
   Ctor a as == Ctor b bs = a == b && as == bs
   Rec as == Rec bs = as == bs
   _ == _ = False
+
+numVal :: Parser Val
+numVal = Num <$> intRaw
+
+charVal :: Parser Val
+charVal = Char <$> charRaw
+
+strVal :: Parser Val
+strVal = toVal <$> strRaw
+
+tupVal :: Parser Val
+tupVal = tuple (Ctor "Tuple") val
+
+listVal :: Parser Val
+listVal = list toVal val
+
+fieldVal :: Parser (Ident, Val)
+fieldVal = (,) <$> (varIdent <* equals) <*> val
+
+recVal :: Parser Val
+recVal = record fieldVal \m b ->
+  if b
+  then fail "Record wildcards can only appear in patterns"
+  else pure $ Rec m
+
+ctorValSimple :: Parser Val
+ctorValSimple = (`Ctor` []) <$> ctorIdent
+
+valSimple :: Parser Val
+valSimple = choice (try <$> [recVal, listVal, tupVal, strVal, charVal, numVal, ctorValSimple]) <* ws
+
+valCtorApp :: Parser Val
+valCtorApp = try (Ctor <$> (ctorIdent <* ws) <*> many (valSimple <* ws)) <|> valSimple
+
+appCtorVal :: Ident -> Val -> Val -> Val
+appCtorVal c a b = Ctor c [a, b]
+
+valCtorOps :: Parser Val
+valCtorOps = chainl1 valCtorApp $ try $ appCtorVal <$> (ctorInfix <* ws)
+
+val :: Parser Val
+val = valCtorOps
+
+withRest :: Parser a -> Parser (a, String)
+withRest p = (,) <$> p <*> getInput
+
+instance Read Val where
+  readsPrec _ s =
+    case parse (withRest val) "" s of
+        Left _ -> []
+        Right v -> [v]

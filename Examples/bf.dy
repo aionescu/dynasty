@@ -1,0 +1,85 @@
+if b t f =
+  match b
+  | True -> t
+  | False -> f
+and
+
+reverse =
+  let go acc l =
+    match l
+    | [] -> acc
+    | a :: as -> go (a :: acc) as
+  in
+  go []
+and
+
+head l =
+  match l
+  | a :: _ -> a
+and
+
+tail l =
+  match l
+  | _ :: as -> as
+and
+
+parse =
+  let go scope stack src =
+    match src
+    | [] ->
+      ( match stack
+        | [] -> reverse scope
+        | _ -> Exception "Unmatched '['."
+      )
+    | '+' :: cs -> go (Incr :: scope) stack cs
+    | '-' :: cs -> go (Decr :: scope) stack cs
+    | '<' :: cs -> go (MovL :: scope) stack cs
+    | '>' :: cs -> go (MovR :: scope) stack cs
+    | ',' :: cs -> go (Read :: scope) stack cs
+    | '.' :: cs -> go (Write :: scope) stack cs
+    | '[' :: cs -> go [] (scope :: stack) cs
+    | ']' :: cs ->
+      ( match stack
+        | [] -> Exception "Unmatched ']'."
+        | parent :: stack -> go (Loop (reverse scope) :: parent) stack cs
+      )
+    | _ :: cs -> go scope stack cs
+  in
+  go [] []
+and
+
+zeros = 0 :: zeros and
+tape = { left = zeros, crr = 0, right = zeros } and
+
+saturate (n: Num) =
+  match n
+  | 256 -> 0
+  | -1 -> 255
+  | _ -> n
+and
+
+evalOp op tape =
+  match tape
+  | { left, crr, right } ->
+    match op
+    | Incr -> pure { left, crr = saturate (crr + 1), right }
+    | Decr -> pure { left, crr = saturate (crr - 1), right }
+    | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
+    | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
+    | Read -> getChar >>= \(c: Char). pure { left, crr = charToNum c, right }
+    | Write -> putChar (numToChar crr) *> pure tape
+    | Loop ops ->
+        match crr
+        | 0 -> pure tape
+        | _ -> evalOps ops tape >>= evalOp (Loop ops)
+and
+
+evalOps ops tape =
+  match ops
+  | [] -> pure tape
+  | op :: ops -> evalOp op tape >>= evalOps ops
+and
+
+eval ops = evalOps ops tape *> pure () and
+
+main = readFile "Examples/HelloWorld.bf" >>= (eval . parse)

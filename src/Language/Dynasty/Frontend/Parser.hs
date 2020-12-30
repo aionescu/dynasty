@@ -110,7 +110,7 @@ reservedNames :: [String]
 reservedNames = ["match", "let", "and", "in"]
 
 reservedOps :: [String]
-reservedOps = ["\\", "->", "|", "_", ":"]
+reservedOps = ["=", "\\", "->", "|", "_", ":"]
 
 identRaw :: Parser String
 identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar

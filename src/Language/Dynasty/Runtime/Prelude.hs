@@ -3,6 +3,7 @@ module Language.Dynasty.Runtime.Prelude where
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Debug.Trace(trace)
+import System.Environment(getArgs)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
@@ -20,6 +21,10 @@ typeOf (Ctor i as) = Ctor "Ctor" [toVal i, toVal $ toInteger $ length as]
 typeOf (Rec m) = Ctor "Rec" [toVal $ M.keys m]
 typeOf (Fn _) = Ctor "Fn" []
 typeOf (IO _) = Ctor "IO" []
+
+-- First arg is the .dy script's path
+getArgs' :: IO [String]
+getArgs' = tail <$> getArgs
 
 prelude :: Env
 prelude =
@@ -41,4 +46,10 @@ prelude =
   , ("trace", toVal $ trace @Val)
   , ("typeOf", toVal typeOf)
   , ("<", toVal $ (<) @Integer)
+  , ("readFile", toVal readFile)
+  , ("getChar", toVal getChar)
+  , ("putChar", toVal putChar)
+  , ("getArgs", toVal getArgs')
+  , ("charToNum", toVal $ toInteger . fromEnum @Char)
+  , ("numToChar", toVal $ toEnum @Char . fromInteger)
   ]

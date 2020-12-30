@@ -1,15 +1,13 @@
 -- Self-recursive binding
-fac (n: Num) =
-  match n
+fac = \match
   | 0 -> 1
-  | _ -> n * fac (n - 1)
+  | n -> n * fac (n - 1)
 and
 
 -- With fixed points
-fac' f (n: Num) =
-  match n
+fac' f = \match
   | 0 -> 1
-  | _ -> n * f (n - 1)
+  | n -> n * f (n - 1)
 and
 
 -- Haskell-style `fix`
@@ -17,7 +15,7 @@ fix f = let x = f x in x and
 facF = fix fac' and
 
 -- Y combinator
-y f = (\x. f (x x)) (\x. f (x x)) and
+y f = let l = (\x. f (x x)) in l l and
 facY = y fac' and
 
 main =

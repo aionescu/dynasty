@@ -5,8 +5,7 @@ if b t f =
 and
 
 reverse =
-  let go acc l =
-    match l
+  let go acc = \match
     | [] -> acc
     | a :: as -> go (a :: acc) as
   in
@@ -17,8 +16,7 @@ head (a :: _) = a and
 tail (_ :: as) = as and
 
 parse =
-  let go scope stack src =
-    match src
+  let go scope stack = \match
     | [] ->
       ( match stack
         | [] -> reverse scope
@@ -44,11 +42,10 @@ and
 zeros = 0 :: zeros and
 tape = { left = zeros, crr = 0, right = zeros } and
 
-saturate (n: Num) =
-  match n
+saturate = \match
   | 256 -> 0
   | -1 -> 255
-  | _ -> n
+  | n -> n
 and
 
 evalOp op tape@{ .. } =

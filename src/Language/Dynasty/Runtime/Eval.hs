@@ -23,12 +23,10 @@ evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
 evalExpr (CtorLit i es) = Ctor i <$> traverse evalExpr es
 
-evalExpr (Lam p e) =
+evalExpr (Lam ps) =
   asks \env ->
-    Fn \a ->
-      case tryBranch env a p of
-        Nothing -> exn "Incomplete uni pattern"
-        Just env' -> runReader (evalExpr e) env'
+    Fn \v ->
+      runReader (tryBranches v ps) env
 
 evalExpr (RecMember e i) = evalExpr e <&> \case
   Rec m -> fromMaybe (exn "Field not found.") $ M.lookup i m
@@ -46,8 +44,6 @@ evalExpr (Let bs e) = mdo
 
   local (M.union vs') $
     evalExpr e
-
-evalExpr (Match e ps) = evalExpr e >>= \v -> tryBranches v ps
 
 tryBranch :: Env -> Val -> Pat -> Maybe Env
 tryBranch env v p =

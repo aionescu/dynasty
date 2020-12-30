@@ -15,10 +15,9 @@ data Node :: NodeKind -> * where
   CtorLit :: Ident -> [Node a] -> Node a
   Var :: Ident -> Node a
   RecMember :: Expr -> Ident -> Expr
-  Lam :: Pat -> Expr -> Expr
+  Lam :: [(Pat, Expr)] -> Expr
   App :: Expr -> Expr -> Expr
   Let :: BindingGroup -> Expr -> Expr
-  Match :: Expr -> [(Pat, Expr)] -> Expr
   OfType :: Ident -> Pat -> Pat
   Wildcard :: Pat
   As :: Ident -> Pat -> Pat

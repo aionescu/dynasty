@@ -187,10 +187,19 @@ recLitPat :: Parser Pat
 recLitPat = recLit pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 
 mkLam :: [Pat] -> Expr -> Expr
-mkLam = flip $ foldr Lam
+mkLam = flip $ foldr \p e -> Lam [(p, e)]
+
+matchBranch :: Parser (Pat, Expr)
+matchBranch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
+
+lamMatch :: Parser Expr
+lamMatch = string "match" *> ws *> many (matchBranch <* ws) <&> Lam
+
+lamVars :: Parser Expr
+lamVars = mkLam <$> (many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
 
 lam :: Parser Expr
-lam = mkLam <$> (char '\\' *> ws *> many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
+lam = char '\\' *> ws *> (try lamMatch <|> lamVars)
 
 binding :: Parser (Ident, Expr)
 binding = (,) <$> (varIdent <* ws) <*> (mkLam <$> many (patSimple <* ws) <*> (equals *> expr <* ws))
@@ -212,12 +221,12 @@ let' =
   <*> (string "in" *> ws *> expr)
 
 match :: Parser Expr
-match = Match <$> (string "match" *> ws *> expr <* ws) <*> many branch
+match = mkMatch <$> (string "match" *> ws *> expr <* ws) <*> many matchBranch
   where
-    branch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
+    mkMatch e bs = App (Lam bs) e
 
 exprSimple :: Parser Expr
-exprSimple = choice (try <$> [let', match, lam, recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
+exprSimple = choice (try <$> [let', lam, match, recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
 
 wildcard :: Parser Pat
 wildcard = char '_' $> Wildcard

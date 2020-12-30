@@ -1,0 +1,32 @@
+-- let take = \n l.
+--   match (n, l)
+--   | (0, _) -> []
+--   | (_, []) -> []
+--   | (n, a :: as) -> a :: take (n - 1) as
+-- in
+
+-- let a = 1 :: a in
+-- print (take 20 a) *>
+
+let if = \b t f.
+  match b
+  | True -> t
+  | False -> f
+in
+
+let (..) = \a b.
+  if (a == b)
+    [a]
+    (if (a < b)
+      (a :: (a + 1 .. b))
+      (a :: (a - 1 .. b)))
+in
+print (1 .. 10) *>
+print (10 .. 1) --*>
+
+-- let map = \f l.
+--   match l
+--   | [] -> []
+--   | a :: as -> f a :: map f as
+-- in
+-- print (map ((+) 1) [1, 2, 3])

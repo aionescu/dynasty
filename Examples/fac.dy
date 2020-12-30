@@ -1,6 +1,27 @@
+-- Self-recursive binding
 let fac = \n.
   match n
   | 0 -> 1
   | n: Num -> n * fac (n - 1)
 in
-fac 100
+print (fac 100) *>
+
+-- With fixed points
+let fac' = \f n.
+  match n
+  | 0 -> 1
+  | n: Num -> n * f (n - 1)
+in
+
+-- Haskell-style `fix`
+let fix = \f.
+  let x = f x in x
+in
+
+let facF = fix fac' in
+print (facF 100) *>
+
+-- Y combinator
+let y = \f. (\x. f (x x)) (\x. f (x x)) in
+let facY = y fac' in
+print (facY 100)

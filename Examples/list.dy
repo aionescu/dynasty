@@ -1,5 +1,0 @@
-let a = 2 :: (3 :: Nil) in
-let b = [2, 3] in
-let c = 1 :: b in
-let d = c ++ c in
-d

@@ -1,6 +1,5 @@
 module Language.Dynasty.Runtime.Prelude where
 
-import Data.Function(fix)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Debug.Trace(trace)
@@ -9,9 +8,6 @@ import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
 
 type Env = Map Ident Val
-
-hang :: Bool
-hang = hang
 
 mergeRecords :: Val -> Val -> Val
 mergeRecords (Rec as) (Rec bs) = Rec $ M.union bs as
@@ -33,21 +29,16 @@ prelude =
   , ("*", toVal $ (*) @Integer)
   , ("/", toVal $ quot @Integer)
   , ("%", toVal $ rem @Integer)
-  , ("not", toVal not)
-  , ("&&", toVal (&&))
-  , ("||", toVal (||))
   , ("pure", toVal $ pure @IO @Val)
   , ("*>", toVal $ (*>) @IO @Val @Val)
   , (">>=", toVal $ (>>=) @IO @Val @Val)
   , ("getLine", toVal getLine)
   , ("print", toVal $ print @Val)
-  , ("++", toVal $ (++) @Val)
-  , ("hang", toVal hang)
   , ("show", toVal $ show @Val)
-  , ("fix", toVal $ fix @Val) -- Free recursion
   , ("==", toVal $ (==) @Val)
   , (".", toVal $ (.) @Val @Val @Val)
   , ("&", toVal mergeRecords)
   , ("trace", toVal $ trace @Val)
   , ("typeOf", toVal typeOf)
+  , ("<", toVal $ (<) @Integer)
   ]

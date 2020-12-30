@@ -230,7 +230,7 @@ appVar :: Ident -> Expr 'E -> Expr 'E -> Expr 'E
 appVar v = App . App (Var v)
 
 exprVarOps :: Parser (Expr 'E)
-exprVarOps = chainr1 exprCtorOps $ appVar <$> (varInfix <* ws)
+exprVarOps = chainl1 exprCtorOps $ appVar <$> (varInfix <* ws)
 
 expr :: Parser (Expr 'E)
 expr = exprVarOps

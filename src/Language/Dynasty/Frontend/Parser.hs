@@ -181,17 +181,17 @@ recLitExpr = record expr \m b ->
 recLitPat :: Parser Pat
 recLitPat = record pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 
+mkLam :: [Pat] -> Expr -> Expr
+mkLam = flip $ foldr Lam
+
 lam :: Parser Expr
-lam = mkLam <$> (char '\\' *> ws *> many1 (varIdent <* ws) <* char '.' <* ws) <*> expr
-  where
-    mkLam [] e = e
-    mkLam (i : as) e = Lam i $ mkLam as e
+lam = mkLam <$> (char '\\' *> ws *> many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
 
 binding :: Parser (Ident, Expr)
-binding = try $ (,) <$> (varIdent <* ws) <*> (equals *> expr <* ws)
+binding = (,) <$> (varIdent <* ws) <*> (mkLam <$> many (patSimple <* ws) <*> (equals *> expr <* ws))
 
 bindingGroup :: Parser BindingGroup
-bindingGroup = binding `sepBy1` try (string "and" *> ws) >>= ensureUnique
+bindingGroup = try binding `sepBy1` try (string "and" *> ws) >>= ensureUnique
   where
     ensureUnique bs =
       let is = fst <$> bs
@@ -259,11 +259,8 @@ exprVarOps = chainl1 exprCtorOps $ appVar <$> (varInfix <* ws)
 expr :: Parser Expr
 expr = exprVarOps
 
-getMain :: Parser Expr
-getMain = (`Let` Var "main") <$> bindingGroup
+program :: Parser BindingGroup
+program = option () shebang *> ws *> bindingGroup <* eof
 
-program :: Parser Expr
-program = option () shebang *> ws *> getMain <* eof
-
-parse :: MonadError String m => String -> m Expr
+parse :: MonadError String m => String -> m BindingGroup
 parse = liftEither . first show . runParser program () ""

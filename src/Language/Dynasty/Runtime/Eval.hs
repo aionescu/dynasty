@@ -1,4 +1,4 @@
-module Language.Dynasty.Runtime.Eval(eval) where
+module Language.Dynasty.Runtime.Eval(runTopLevel) where
 
 import Control.Monad(zipWithM_)
 import Control.Monad.Except(MonadError(throwError))
@@ -23,10 +23,12 @@ evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
 evalExpr (CtorLit i es) = Ctor i <$> traverse evalExpr es
 
-evalExpr (Lam i e) =
+evalExpr (Lam p e) =
   asks \env ->
     Fn \a ->
-      runReader (evalExpr e) (M.insert i a env)
+      case tryBranch env a p of
+        Nothing -> exn "Incomplete uni pattern"
+        Just env' -> runReader (evalExpr e) env'
 
 evalExpr (RecMember e i) = evalExpr e <&> \case
   Rec m -> fromMaybe (exn "Field not found.") $ M.lookup i m
@@ -94,5 +96,5 @@ printVal v = print v
 runEval :: Reader Env Val -> IO ()
 runEval m = printVal $ runReader m prelude
 
-eval :: Expr -> IO ()
-eval = runEval . evalExpr
+runTopLevel :: BindingGroup  -> IO ()
+runTopLevel bs = runEval $ evalExpr $ Let bs $ Var "main"

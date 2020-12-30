@@ -1,0 +1,2 @@
+f (n: Num) { x, y } = { x = x + n, y = y + n } and
+main = f 3 { x = 2, y = 4 }

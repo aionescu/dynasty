@@ -1,5 +1,5 @@
 main =
-  let take = \n l.
+  let take (n: Num) l =
     match (n, l)
     | (0, _) -> []
     | (_, []) -> []
@@ -9,13 +9,13 @@ main =
   let a = 1 :: a in
   print (take 20 a) *>
 
-  let if = \b t f.
+  let if b t f =
     match b
     | True -> t
     | False -> f
   in
 
-  let (..) = \a b.
+  let (..) (a: Num) (b: Num) =
     if (a == b)
       [a]
       (if (a < b)
@@ -25,7 +25,7 @@ main =
   print (1 .. 10) *>
   print (10 .. 1) *>
 
-  let map = \f l.
+  let map (f: Fn) l =
     match l
     | [] -> []
     | a :: as -> f a :: map f as

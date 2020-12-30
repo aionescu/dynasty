@@ -2,6 +2,11 @@
 
 Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
 
+## Examples
+
+You can find some test Dynasty programs in the [Examples](Examples) folder.
+The biggest one is a [Brainfuck interpreter](Examples/bf.dy).
+
 ## Building & running
 
 To build the project, you will need `cabal`, which can be found [here](https://www.haskell.org/platform/).

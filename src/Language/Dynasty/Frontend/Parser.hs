@@ -259,8 +259,11 @@ exprVarOps = chainl1 exprCtorOps $ appVar <$> (varInfix <* ws)
 expr :: Parser Expr
 expr = exprVarOps
 
+getMain :: Parser Expr
+getMain = (`Let` Var "main") <$> bindingGroup
+
 program :: Parser Expr
-program = option () shebang *> ws *> expr <* eof
+program = option () shebang *> ws *> getMain <* eof
 
 parse :: MonadError String m => String -> m Expr
 parse = liftEither . first show . runParser program () ""

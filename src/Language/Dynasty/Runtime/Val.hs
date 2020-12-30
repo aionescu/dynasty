@@ -3,6 +3,7 @@ module Language.Dynasty.Runtime.Val where
 import Control.Exception(catch)
 import Control.Exception.Base(SomeException)
 import Data.Char(isLetter)
+import Data.Foldable(toList)
 import Data.List(intercalate)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
@@ -206,7 +207,4 @@ withRest :: Parser a -> Parser (a, String)
 withRest p = (,) <$> p <*> getInput
 
 instance Read Val where
-  readsPrec _ s =
-    case parse (withRest val) "" s of
-        Left _ -> []
-        Right v -> [v]
+  readsPrec _ = toList . parse (withRest val) ""

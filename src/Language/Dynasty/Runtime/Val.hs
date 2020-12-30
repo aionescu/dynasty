@@ -117,6 +117,9 @@ showRecord r
   where
     showField i v = showIdent i ++ " = " ++ showVal False v
 
+showList' :: Show a => [a] -> String
+showList' l = "[" ++ intercalate ", " (show <$> l) ++ "]"
+
 showCtor :: Bool -> Ident -> [Val] -> String
 showCtor _ "Tuple" [] = "()"
 showCtor _ "Tuple" [a] = "(" ++ showVal False a ++ ",)"
@@ -125,7 +128,7 @@ showCtor _ "Tuple" as = "(" ++ intercalate ", " (showVal False <$> as) ++ ")"
 showCtor _ "Nil" [] = "[]"
 showCtor _ "::" as
   | Just (s :: String) <- ofVal (Ctor "::" as) = show s
-  | Just (l :: [Val]) <- ofVal (Ctor "::" as) = show l
+  | Just (l :: [Val]) <- ofVal (Ctor "::" as) = showList' l
 
 showCtor _ i [] = showIdent i
 

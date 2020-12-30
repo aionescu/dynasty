@@ -1,0 +1,9 @@
+let take = n l ->
+  match (n, l)
+  | (0, l) -> []
+  | (_, []) -> []
+  | (n, a :: as) -> a :: take (n - 1) as
+in
+
+let a = 1 :: a in
+take 20 a

@@ -11,6 +11,7 @@ data Node :: NodeKind -> * where
   NumLit :: Integer -> Node a
   CharLit :: Char -> Node a
   RecLit :: Map Ident (Node a) -> Node a
+  RecWildcard :: Map Ident Pat -> Pat
   CtorLit :: Ident -> [Node a] -> Node a
   Var :: Ident -> Node a
   RecMember :: Expr -> Ident -> Expr

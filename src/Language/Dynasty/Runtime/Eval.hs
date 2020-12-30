@@ -77,6 +77,11 @@ evalPat (Ctor c vs) (CtorLit c' ps)
 evalPat (Rec m) (RecLit m')
   | M.null $ M.difference m' m = traverse_ (uncurry evalPat) $ M.elems $ M.intersectionWith (,) m m'
   | otherwise = fail'
+evalPat (Rec m) (RecWildcard m')
+  | M.null $ M.difference m' m = do
+      traverse_ (uncurry evalPat) $ M.elems $ M.intersectionWith (,) m m'
+      modify $ M.union $ M.difference m m'
+  | otherwise = fail'
 evalPat v (OfType i p) = evalPat (typeOf v) p *> modify (M.insert i v)
 evalPat _ Wildcard = pure ()
 evalPat _ _ = fail'

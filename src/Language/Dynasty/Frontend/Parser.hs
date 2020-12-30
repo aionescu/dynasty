@@ -36,20 +36,26 @@ tuple mk term = parens '(' ')' $ uncurry mkTup <$> elems
     mkTup [a] False = a
     mkTup l _ = mk l
 
-record :: Parser a -> Parser (Map Ident a)
-record rhs = M.fromList <$> (unique =<< parens '{' '}' elems)
+recField :: Parser (Node a) -> Parser (Ident, Node a)
+recField p = mkField <$> (varIdent <* ws) <*> optionMaybe (try $ equals *> p)
   where
-    withTrailing = many (term <* comma)
-    noTrailing = sepBy1 term comma
-    elems = try withTrailing <|> noTrailing
-    term = (,) <$> (varIdent <* equals) <*> (rhs <* ws)
+    mkField i Nothing = (i, Var i)
+    mkField i (Just n) = (i, n)
 
-    unique es =
+record :: Parser (Node k) -> (Map Ident (Node k) -> Bool -> Parser a) -> Parser a
+record rhs f = parens '{' '}' elems >>= unique >>= uncurry f
+  where
+    withTrailing = (,) <$> many (term <* comma) <*> option False (string ".." *> ws $> True)
+    noTrailing = (, False) <$> sepBy1 term comma
+    elems = try withTrailing <|> noTrailing
+    term = recField rhs
+
+    unique (es, b) =
       let es' = fst <$> es
       in
         if nub es' == es'
-          then pure es
-          else fail "Fields in a record must be unique"
+        then pure (M.fromList es, b)
+        else fail "Fields in a record must be unique"
 
 list :: Parser (Node a) -> Parser (Node a)
 list p = explode id <$> parens '[' ']' ((p <* ws) `sepEndBy` comma)
@@ -166,8 +172,14 @@ ctorSimple = (`CtorLit` []) <$> ctorIdent
 tupLit :: Parser (Node a) -> Parser (Node a)
 tupLit = tuple (CtorLit "Tuple")
 
-recLit :: Parser (Node a) -> Parser (Node a)
-recLit p = RecLit <$> record p
+recLitExpr :: Parser Expr
+recLitExpr = record expr \m b ->
+  if b
+  then fail "Record wildcards can only appear in patterns"
+  else pure $ RecLit m
+
+recLitPat :: Parser Pat
+recLitPat = record pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 
 lam :: Parser Expr
 lam = mkLam <$> (char '\\' *> ws *> many1 (varIdent <* ws) <* char '.' <* ws) <*> expr
@@ -200,7 +212,7 @@ match = Match <$> (string "match" *> ws *> expr <* ws) <*> many branch
     branch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
 
 exprSimple :: Parser Expr
-exprSimple = choice (try <$> [let', match, lam, recLit expr, list expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
+exprSimple = choice (try <$> [let', match, lam, recLitExpr, list expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
 
 wildcard :: Parser Pat
 wildcard = char '_' $> Wildcard
@@ -209,7 +221,7 @@ ofType :: Parser Pat
 ofType = OfType <$> (varIdent <* colon) <*> pat
 
 patSimple :: Parser Pat
-patSimple = choice (try <$> [ofType, wildcard, recLit pat, list pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
+patSimple = choice (try <$> [ofType, wildcard, recLitPat, list pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
 
 patCtorApp :: Parser Pat
 patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> many (patSimple <* ws)) <|> patSimple

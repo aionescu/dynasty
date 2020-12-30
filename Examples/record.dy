@@ -1,0 +1,16 @@
+let x = 2
+and y = 3
+and a = Point { x = 7, y }
+and a' =
+  match a
+  | Point { x, y } -> (x, y)
+in
+print a' *>
+
+let a = { a = 1, b = 2, c = 3, d = 4, e = 5 }
+and a' =
+  match a
+  | { a = 2 } -> "a"
+  | { .. } -> (a, b, c, d, e)
+in
+print a'

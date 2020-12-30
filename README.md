@@ -10,11 +10,11 @@ You can find some test programs in the [Examples](Examples) folder.
 
 The most interesting one is the [Brainfuck interpreter](Examples/bf.dy).
 
-## Missing features
+## TODO
 
 Some major features are not yet implemented:
 
-* Whitespace-sensitive parsing
+* Whitespace-sensitive parser
 * Module system & import mechanism
 * REPL
 

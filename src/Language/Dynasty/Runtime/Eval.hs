@@ -14,7 +14,7 @@ import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.Prelude
 
-evalExpr :: (MonadFix m, MonadReader Env m) => Expr 'E -> m Val
+evalExpr :: (MonadFix m, MonadReader Env m) => Expr -> m Val
 evalExpr (NumLit i) = pure $ Num i
 evalExpr (CharLit b) = pure $ Char b
 evalExpr (Var i) = asks $ fromMaybe (exn "Variable not declared") . M.lookup i
@@ -44,13 +44,13 @@ evalExpr (Let i v e) = do
 
 evalExpr (Match e ps) = evalExpr e >>= \v -> tryBranches v ps
 
-tryBranch :: Env -> Val -> Expr 'P -> Maybe Env
+tryBranch :: Env -> Val -> Pat -> Maybe Env
 tryBranch env v p =
     case execStateT (evalPat v p) env of
     Left _ -> Nothing
     Right e -> Just e
 
-tryBranches :: (MonadFix m, MonadReader Env m) => Val -> [(Expr 'P, Expr 'E)] -> m Val
+tryBranches :: (MonadFix m, MonadReader Env m) => Val -> [(Pat, Expr)] -> m Val
 tryBranches _ [] = pure $ exn "Incomplete pattern match"
 tryBranches v ((p, e) : ps) =
   ask >>= \env ->
@@ -61,7 +61,7 @@ tryBranches v ((p, e) : ps) =
 fail' :: MonadError () m => m a
 fail' = throwError ()
 
-evalPat :: (MonadState Env m, MonadError () m) => Val -> Expr 'P -> m ()
+evalPat :: (MonadState Env m, MonadError () m) => Val -> Pat -> m ()
 evalPat v (Var i) = modify (M.insert i v)
 evalPat (Num n) (NumLit m)
   | m == n = pure ()
@@ -86,5 +86,5 @@ printVal v = print v
 runEval :: Reader Env Val -> IO ()
 runEval m = printVal $ runReader m prelude
 
-eval :: Expr 'E -> IO ()
+eval :: Expr -> IO ()
 eval = runEval . evalExpr

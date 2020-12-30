@@ -16,7 +16,7 @@ mergeRecords _ _ = exn "Need records for merge"
 typeOf :: Val -> Val
 typeOf (Num _) = Ctor "Num" []
 typeOf (Char _) = Ctor "Char" []
-typeOf (Ctor i _) = Ctor "Ctor" [toVal i]
+typeOf (Ctor i as) = Ctor "Ctor" [toVal i, toVal $ toInteger $ length as]
 typeOf (Rec m) = Ctor "Rec" [toVal $ M.keys m]
 typeOf (Fn _) = Ctor "Fn" []
 typeOf (IO _) = Ctor "IO" []

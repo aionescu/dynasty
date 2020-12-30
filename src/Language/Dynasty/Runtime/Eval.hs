@@ -2,7 +2,7 @@ module Language.Dynasty.Runtime.Eval(eval) where
 
 import Control.Monad(zipWithM_)
 import Control.Monad.Except(MonadError(throwError))
-import Control.Monad.Fix(MonadFix(mfix))
+import Control.Monad.Fix(MonadFix)
 import Control.Monad.Reader(runReader, Reader, asks, MonadReader(ask, local))
 import Control.Monad.State(execStateT, modify, MonadState)
 import Data.Foldable(traverse_)
@@ -37,8 +37,8 @@ evalExpr (App f a) =
     Fn f' -> f' <$> evalExpr a
     _ -> pure $ exn "LHS of App must be a function."
 
-evalExpr (Let bs e) = do
-  vs' <- mfix \vs' ->
+evalExpr (Let bs e) = mdo
+  vs' <-
     local (M.union vs') $
       traverse evalExpr bs
 

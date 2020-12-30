@@ -76,6 +76,7 @@ executable dynasty
     PatternSynonyms
     RankNTypes
     RecordWildCards
+    RecursiveDo
     ScopedTypeVariables
     StandaloneDeriving
     TupleSections

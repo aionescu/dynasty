@@ -110,7 +110,7 @@ reservedNames :: [String]
 reservedNames = ["match", "let", "and", "in"]
 
 reservedOps :: [String]
-reservedOps = ["=", "\\", "->", "|", "_", ":"]
+reservedOps = ["=", "\\", "->", "|", ":"]
 
 identRaw :: Parser String
 identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar
@@ -220,8 +220,11 @@ wildcard = char '_' $> Wildcard
 ofType :: Parser Pat
 ofType = OfType <$> (varIdent <* colon) <*> pat
 
+as :: Parser Pat
+as = As <$> (varIdent <* char '@') <*> patSimple
+
 patSimple :: Parser Pat
-patSimple = choice (try <$> [ofType, wildcard, recLitPat, list pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
+patSimple = choice (try <$> [as, ofType, wildcard, recLitPat, list pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
 
 patCtorApp :: Parser Pat
 patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> many (patSimple <* ws)) <|> patSimple

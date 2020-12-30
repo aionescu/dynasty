@@ -21,6 +21,7 @@ data Node :: NodeKind -> * where
   Match :: Expr -> [(Pat, Expr)] -> Expr
   OfType :: Ident -> Pat -> Pat
   Wildcard :: Pat
+  As :: Ident -> Pat -> Pat
 
 deriving instance Show (Node a)
 

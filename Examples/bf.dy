@@ -13,15 +13,8 @@ reverse =
   go []
 and
 
-head l =
-  match l
-  | a :: _ -> a
-and
-
-tail l =
-  match l
-  | _ :: as -> as
-and
+head (a :: _) = a and
+tail (_ :: as) = as and
 
 parse =
   let go scope stack src =
@@ -58,20 +51,18 @@ saturate (n: Num) =
   | _ -> n
 and
 
-evalOp op tape =
-  match tape
-  | { left, crr, right } ->
-    match op
-    | Incr -> pure { left, crr = saturate (crr + 1), right }
-    | Decr -> pure { left, crr = saturate (crr - 1), right }
-    | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
-    | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
-    | Read -> getChar >>= \(c: Char). pure { left, crr = charToNum c, right }
-    | Write -> putChar (numToChar crr) *> pure tape
-    | Loop ops ->
-        match crr
-        | 0 -> pure tape
-        | _ -> evalOps ops tape >>= evalOp (Loop ops)
+evalOp op tape@{ .. } =
+  match op
+  | Incr -> pure { left, crr = saturate (crr + 1), right }
+  | Decr -> pure { left, crr = saturate (crr - 1), right }
+  | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
+  | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
+  | Read -> getChar >>= \(c: Char). pure { left, crr = charToNum c, right }
+  | Write -> putChar (numToChar crr) *> pure tape
+  | Loop ops ->
+      match crr
+      | 0 -> pure tape
+      | _ -> evalOps ops tape >>= evalOp (Loop ops)
 and
 
 evalOps ops tape =

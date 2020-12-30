@@ -86,6 +86,7 @@ evalPat (Rec m) (RecWildcard m')
   | otherwise = fail'
 evalPat v (OfType i p) = evalPat (typeOf v) p *> modify (M.insert i v)
 evalPat _ Wildcard = pure ()
+evalPat v (As i p) = evalPat v p *> modify (M.insert i v)
 evalPat _ _ = fail'
 
 printVal :: Val -> IO ()

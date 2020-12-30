@@ -1,12 +1,10 @@
 let a = True in
 let b = 2 in
-let if = b t f ->
+let if = \b t f.
   match b
   | True -> t
   | False -> f
 in
-let and = a b -> if a b a in
-let or = a b -> if a a b in
--- a || hang
--- or hang a
+let and = \a b. if a b a in
+let or = \a b. if a a b in
 a `or` hang

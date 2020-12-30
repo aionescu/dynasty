@@ -104,7 +104,7 @@ reservedNames :: [String]
 reservedNames = ["let", "in", "match"]
 
 reservedOps :: [String]
-reservedOps = ["->", "|", "_", ":"]
+reservedOps = ["\\", "->", "|", "_", ":"]
 
 identRaw :: Parser String
 identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar
@@ -170,7 +170,7 @@ recLit :: Parser (Expr a) -> Parser (Expr a)
 recLit p = RecLit <$> record p
 
 lam :: Parser (Expr 'E)
-lam = mkLam <$> (many1 (varIdent <* ws) <* string "->" <* ws) <*> expr
+lam = mkLam <$> (char '\\' *> ws *> many1 (varIdent <* ws) <* char '.' <* ws) <*> expr
   where
     mkLam [] e = e
     mkLam (i : as) e = Lam i $ mkLam as e

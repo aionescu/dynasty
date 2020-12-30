@@ -1,5 +1,5 @@
-let point = x y -> { x = x, y = y } in
-let add = a b -> { x = a.x + b.x, y = a.y + b.y } in
+let point = \x y. { x = x, y = y } in
+let add = \a b. { x = a.x + b.x, y = a.y + b.y } in
 print (point 2 2 `add` point 3 3) *>
 
 let a = { a = 1, b = 2, c = True } in

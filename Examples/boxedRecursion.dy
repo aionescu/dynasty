@@ -1,6 +1,6 @@
-let take = n l ->
+let take = \n l.
   match (n, l)
-  | (0, l) -> []
+  | (0, _) -> []
   | (_, []) -> []
   | (n, a :: as) -> a :: take (n - 1) as
 in

@@ -1,5 +1,6 @@
 module Language.Dynasty.Runtime.Prelude where
 
+import Control.Category((>>>))
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Debug.Trace(trace)
@@ -52,4 +53,5 @@ prelude =
   , ("getArgs", toVal getArgs')
   , ("charToNum", toVal $ toInteger . fromEnum @Char)
   , ("numToChar", toVal $ toEnum @Char . fromInteger)
+  , (";", toVal $ (>>>) @(->) @Val @Val @Val)
   ]

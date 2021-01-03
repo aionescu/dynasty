@@ -10,14 +10,6 @@ You can find some test programs in the [Examples](Examples) folder.
 
 The most interesting one is the [Brainfuck interpreter](Examples/bf.dy).
 
-## TODO
-
-Some major features are not yet implemented:
-
-* Whitespace-sensitive parser
-* Module system & import mechanism
-* REPL
-
 ## Building & running
 
 To build the project, you will need `cabal`, which can be found [here](https://www.haskell.org/platform/).

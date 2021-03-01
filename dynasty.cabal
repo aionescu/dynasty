@@ -32,7 +32,7 @@ executable dynasty
   hs-source-dirs: src
 
   build-depends:
-    base ^>=4.13
+    base >=4.13 && <5
     , containers ^>= 0.6.2
     , mtl ^>= 2.2.2
     , optparse-applicative ^>= 0.16.1

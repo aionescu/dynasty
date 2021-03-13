@@ -1,13 +1,12 @@
 module Language.Dynasty.Runtime.Val where
 
-import Control.Exception(catch)
-import Control.Exception.Base(SomeException)
 import Data.Char(isLetter)
 import Data.Foldable(toList)
 import Data.List(intercalate)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
-import System.IO.Unsafe(unsafePerformIO)
+import Data.Proxy(Proxy(..))
+import Data.Typeable(Typeable, typeRep)
 import Text.Parsec
 import Text.Read(readMaybe)
 
@@ -21,12 +20,10 @@ data Val
   | Rec (Map String Val)
   | Fn (Val -> Val)
   | IO (IO Val)
+  deriving stock Typeable
 
 exn :: String -> Val
 exn s = Ctor "Exception" [toVal s]
-
-catchExn :: Val -> Val
-catchExn v = unsafePerformIO $ pure v `catch` \(e :: SomeException) -> pure $ exn $ show e
 
 class ToVal a where
   toVal :: a -> Val
@@ -94,8 +91,11 @@ instance OfVal a => OfVal (Maybe a) where
   ofVal (Ctor "Just" [a]) = Just <$> ofVal a
   ofVal _ = Nothing
 
-instance (OfVal a, ToVal b) => ToVal (a -> b) where
-  toVal f = Fn $ maybe (exn "Input failed in ofVal @(a -> b).") (toVal . f) . ofVal
+instance (Typeable a, OfVal a, ToVal b) => ToVal (a -> b) where
+  toVal f = Fn \v ->
+    case ofVal v of
+      Nothing -> exn $ "Expected something that looks like '" ++ show (typeRep $ Proxy @a) ++ "', but found: " ++ show v ++ "."
+      Just a -> toVal $ f a
 
 instance OfVal (Val -> Val) where
   ofVal (Fn f) = Just f
@@ -105,7 +105,7 @@ instance OfVal (Val -> IO Val) where
   ofVal (Fn f) = Just \a ->
     case f a of
       IO v -> v
-      _ -> pure $ exn "Expected IO value, found pure value"
+      v -> pure $ exn $ "Expected IO value, found pure value: " ++ show v ++ "."
 
   ofVal _ = Nothing
 

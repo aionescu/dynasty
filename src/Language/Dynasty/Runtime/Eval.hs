@@ -17,7 +17,7 @@ import Language.Dynasty.Runtime.Prelude
 evalExpr :: (MonadFix m, MonadReader Env m) => Expr -> m Val
 evalExpr (NumLit i) = pure $ Num i
 evalExpr (CharLit b) = pure $ Char b
-evalExpr (Var i) = asks $ fromMaybe (exn "Variable not declared") . M.lookup i
+evalExpr (Var i) = asks $ fromMaybe (exn $ "Variable '" ++ i ++ "' does not exist in the current scope.") . M.lookup i
 
 evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
@@ -29,13 +29,14 @@ evalExpr (Lam ps) =
       runReader (tryBranches v ps) env
 
 evalExpr (RecMember e i) = evalExpr e <&> \case
-  Rec m -> fromMaybe (exn "Field not found.") $ M.lookup i m
-  _ -> exn "Need record for getter"
+  v@(Rec m) -> fromMaybe (exn $ "Field '" ++ i ++ "' does exist in the record: " ++ show v ++ ".") $ M.lookup i m
+  v -> exn $ "Tried to read field '" ++ i ++ "' of non-record: " ++ show v ++ "."
 
 evalExpr (App f a) =
   evalExpr f >>= \case
     Fn f' -> f' <$> evalExpr a
-    _ -> pure $ exn "LHS of App must be a function."
+    e@(Ctor "Exception" _) -> pure e
+    v -> pure $ exn $ "Tried to apply non-function: " ++ show v ++ "."
 
 evalExpr (Let bs e) = mdo
   vs' <-
@@ -52,7 +53,7 @@ tryBranch env v p =
     Right e -> Just e
 
 tryBranches :: (MonadFix m, MonadReader Env m) => Val -> [(Pat, Expr)] -> m Val
-tryBranches _ [] = pure $ exn "Incomplete pattern match"
+tryBranches v [] = pure $ exn $ "Incomplete pattern match on: " ++ show v ++ "."
 tryBranches v ((p, e) : ps) =
   ask >>= \env ->
     case tryBranch env v p of

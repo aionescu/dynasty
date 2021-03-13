@@ -112,7 +112,7 @@ simpleLit :: Parser (Node a)
 simpleLit = try str <|> try char' <|> int
 
 reservedNames :: [String]
-reservedNames = ["match", "let", "and", "in"]
+reservedNames = ["case", "of", "let", "and", "in"]
 
 reservedOps :: [String]
 reservedOps = ["=", "\\", "->", "|", ":"]
@@ -189,17 +189,17 @@ recLitPat = recLit pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 mkLam :: [Pat] -> Expr -> Expr
 mkLam = flip $ foldr \p e -> Lam [(p, e)]
 
-matchBranch :: Parser (Pat, Expr)
-matchBranch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
+caseBranch :: Parser (Pat, Expr)
+caseBranch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
 
-lamMatch :: Parser Expr
-lamMatch = string "match" *> ws *> many (matchBranch <* ws) <&> Lam
+lamCase :: Parser Expr
+lamCase = string "case" *> ws *> many (caseBranch <* ws) <&> Lam
 
 lamVars :: Parser Expr
 lamVars = mkLam <$> (many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
 
 lam :: Parser Expr
-lam = char '\\' *> ws *> (try lamMatch <|> lamVars)
+lam = char '\\' *> ws *> (try lamCase <|> lamVars)
 
 binding :: Parser (Ident, Expr)
 binding = (,) <$> (varIdent <* ws) <*> (mkLam <$> many (patSimple <* ws) <*> (equals *> expr <* ws))
@@ -220,13 +220,13 @@ let' =
   <$> try (string "let" *> ws *> bindingGroup)
   <*> (string "in" *> ws *> expr)
 
-match :: Parser Expr
-match = mkMatch <$> (string "match" *> ws *> expr <* ws) <*> many matchBranch
+case' :: Parser Expr
+case' = mkCase <$> (string "case" *> ws *> expr <* ws <* string "of" <* ws) <*> many caseBranch
   where
-    mkMatch e bs = App (Lam bs) e
+    mkCase e bs = App (Lam bs) e
 
 exprSimple :: Parser Expr
-exprSimple = choice (try <$> [let', lam, match, recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
+exprSimple = choice (try <$> [let', lam, case', recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
 
 wildcard :: Parser Pat
 wildcard = char '_' $> Wildcard

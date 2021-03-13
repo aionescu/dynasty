@@ -1,11 +1,11 @@
 -- Self-recursive binding
-fac = \match
+fac = \case
   | 0 -> 1
   | n -> n * fac (n - 1)
 and
 
 -- With fixed points
-fac' f = \match
+fac' f = \case
   | 0 -> 1
   | n -> n * f (n - 1)
 and

@@ -13,7 +13,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.dy",
-				"match": "\\b(match|let|and|in)\\b"
+				"match": "\\b(case|of|let|and|in)\\b"
 			}]
     },
     "numbers": {

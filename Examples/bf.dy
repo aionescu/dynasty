@@ -1,11 +1,11 @@
 if b t f =
-  match b
+  case b of
   | True -> t
   | False -> f
 and
 
 reverse =
-  let go acc = \match
+  let go acc = \case
     | [] -> acc
     | a :: as -> go (a :: acc) as
   in
@@ -16,11 +16,11 @@ head (a :: _) = a and
 tail (_ :: as) = as and
 
 parse =
-  let go scope stack = \match
+  let go scope stack = \case
     | [] ->
-      ( match stack
+      ( case stack of
         | [] -> reverse scope
-        | _ -> Exception "Unmatched '['."
+        | _ -> Exception "Uncaseed '['."
       )
     | '+' :: cs -> go (Incr :: scope) stack cs
     | '-' :: cs -> go (Decr :: scope) stack cs
@@ -30,8 +30,8 @@ parse =
     | '.' :: cs -> go (Write :: scope) stack cs
     | '[' :: cs -> go [] (scope :: stack) cs
     | ']' :: cs ->
-      ( match stack
-        | [] -> Exception "Unmatched ']'."
+      ( case stack of
+        | [] -> Exception "Uncaseed ']'."
         | parent :: stack -> go (Loop (reverse scope) :: parent) stack cs
       )
     | _ :: cs -> go scope stack cs
@@ -42,28 +42,28 @@ and
 zeros = 0 :: zeros and
 tape = { left = zeros, crr = 0, right = zeros } and
 
-saturate = \match
+wrap = \case
   | 256 -> 0
   | -1 -> 255
   | n -> n
 and
 
 evalOp op tape@{ .. } =
-  match op
-  | Incr -> pure { left, crr = saturate (crr + 1), right }
-  | Decr -> pure { left, crr = saturate (crr - 1), right }
+  case op of
+  | Incr -> pure { left, crr = wrap (crr + 1), right }
+  | Decr -> pure { left, crr = wrap (crr - 1), right }
   | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
   | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
   | Read -> getChar >>= \(c: Char). pure { left, crr = charToNum c, right }
   | Write -> putChar (numToChar crr) *> pure tape
   | Loop ops ->
-      match crr
+      case crr of
       | 0 -> pure tape
       | _ -> evalOps ops tape >>= evalOp (Loop ops)
 and
 
 evalOps ops tape =
-  match ops
+  case ops of
   | [] -> pure tape
   | op :: ops -> evalOp op tape >>= evalOps ops
 and

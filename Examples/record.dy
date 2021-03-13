@@ -2,13 +2,13 @@ x = 2 and
 y = 3 and
 p = Point { x = 7, y } and
 p' =
-  match p
+  case p of
   | Point { x, y } -> (x, y)
 and
 
 a = { a = 1, b = 2, c = 3, d = 4, e = 5 } and
 a' =
-  match a
+  case a of
   | { a = 2 } -> "a"
   | { .. } -> (a, b, c, d, e)
 and

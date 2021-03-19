@@ -20,7 +20,7 @@ parse =
     | [] ->
       ( case stack of
         | [] -> reverse scope
-        | _ -> Exception "Uncaseed '['."
+        | _ -> Exception "Ummatched '['."
       )
     | '+' :: cs -> go (Incr :: scope) stack cs
     | '-' :: cs -> go (Decr :: scope) stack cs
@@ -31,7 +31,7 @@ parse =
     | '[' :: cs -> go [] (scope :: stack) cs
     | ']' :: cs ->
       ( case stack of
-        | [] -> Exception "Uncaseed ']'."
+        | [] -> Exception "Unmatched ']'."
         | parent :: stack -> go (Loop (reverse scope) :: parent) stack cs
       )
     | _ :: cs -> go scope stack cs

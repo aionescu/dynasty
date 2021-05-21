@@ -6,6 +6,7 @@ data Opts =
   Opts
   { optsDumpAST :: Bool
   , optsPath :: String
+  , optsArgs :: [String]
   }
 
 optsParser :: Parser Opts
@@ -13,6 +14,7 @@ optsParser =
   Opts
   <$> switch (long "dump-ast" <> help "Dump AST instead of running.")
   <*> strArgument (metavar "PATH" <> help "The source file to interpret.")
+  <*> many (strArgument $ metavar "ARGS" <> help "Arguments to pass to the Dynasty program.")
 
 fullParser :: ParserInfo Opts
 fullParser =

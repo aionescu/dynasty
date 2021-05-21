@@ -1,9 +1,3 @@
-if b t f =
-  case b of
-  | True -> t
-  | False -> f
-and
-
 reverse =
   let go acc = \case
     | [] -> acc
@@ -54,7 +48,7 @@ evalOp op tape@{ .. } =
   | Decr -> pure { left, crr = wrap (crr - 1), right }
   | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
   | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
-  | Read -> getChar >>= \(c: Char). pure { left, crr = charToNum c, right }
+  | Read -> getChar >>= \c. pure { left, crr = charToNum c, right }
   | Write -> putChar (numToChar crr) *> pure tape
   | Loop ops ->
       case crr of
@@ -70,4 +64,4 @@ and
 
 eval ops = evalOps ops tape *> pure () and
 
-main = readFile "Examples/HelloWorld.bf" >>= (parse; eval)
+main = (head <$> getArgs) >>= readFile >>= (parse; eval)

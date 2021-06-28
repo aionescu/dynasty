@@ -8,7 +8,7 @@ Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functiona
 
 You can find some test programs in the [Examples](Examples) folder.
 
-The most interesting one is the [Brainfuck interpreter](Examples/bf.dy).
+The most interesting one is the [Brainfuck interpreter](Examples/BF/bf.dy).
 
 ## Building & running
 

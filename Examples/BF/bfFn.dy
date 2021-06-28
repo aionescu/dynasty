@@ -1,7 +1,7 @@
 -- This example implements a "refunctionalized" version of `bf.dy`.
 -- BF instructions are represented directly as functions of the form
 -- `Tape -> IO Tape`, rather than being represented via differentt
--- constructors, which are later "evaluated".
+-- constructors, which are later evaluated.
 
 reverse =
   let go acc = \case

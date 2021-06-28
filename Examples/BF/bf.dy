@@ -1,3 +1,7 @@
+-- This example implements a "defunctionalized" version of `bfFn.dy`.
+-- BF instructions are represented by an ADT which is evaluated when
+-- executing the code, rather than being stored directly as functions.
+
 reverse =
   let go acc = \case
     | [] -> acc

@@ -91,8 +91,8 @@ printVal (IO io) = io >>= printVal
 printVal (Ctor "Tuple" []) = pure ()
 printVal v = print v
 
-runEval :: Reader Env Val -> IO ()
-runEval m = printVal $ runReader m prelude
+runEval :: [String] -> Reader Env Val -> IO ()
+runEval args m = printVal $ runReader m $ prelude args
 
-runTopLevel :: BindingGroup  -> IO ()
-runTopLevel bs = runEval $ evalExpr $ Let bs $ Var "main"
+runTopLevel :: [String] -> BindingGroup  -> IO ()
+runTopLevel args bs = runEval args $ evalExpr $ Let bs $ Var "main"

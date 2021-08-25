@@ -1,11 +1,9 @@
 module Language.Dynasty.Runtime.Prelude where
 
 import Control.Category((>>>))
-import Data.IORef(IORef, newIORef, writeIORef, readIORef)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Debug.Trace(trace)
-import System.IO.Unsafe(unsafePerformIO)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
@@ -24,19 +22,8 @@ typeOf (Rec m) = Ctor "Rec" [toVal $ M.keys m]
 typeOf (Fn _) = Ctor "Fn" []
 typeOf (IO _) = Ctor "IO" []
 
--- Ugly, but works for now
-{-# NOINLINE argsRef #-}
-argsRef :: IORef [String]
-argsRef = unsafePerformIO $ newIORef []
-
-args :: IO Val
-args = toVal . (toVal <$>) <$> readIORef argsRef
-
-setArgs :: [String] -> IO ()
-setArgs = writeIORef argsRef
-
-prelude :: Env
-prelude =
+prelude :: [String] -> Env
+prelude args =
   M.fromList
   [ ("+", toVal $ (+) @Integer)
   , ("-", toVal $ (-) @Integer)
@@ -61,7 +48,7 @@ prelude =
   , ("readFile", toVal readFile)
   , ("getChar", toVal getChar)
   , ("putChar", toVal putChar)
-  , ("getArgs", toVal args)
+  , ("getArgs", toVal $ pure @IO args)
   , ("charToNum", toVal $ toInteger . fromEnum @Char)
   , ("numToChar", toVal $ toEnum @Char . fromInteger)
   , (";", toVal $ (>>>) @(->) @Val @Val @Val)

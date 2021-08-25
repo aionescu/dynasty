@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Function((&))
+import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
 import Language.Dynasty.Frontend.Parser(parse)
 import Language.Dynasty.Runtime.Prelude(setArgs)
@@ -23,4 +24,7 @@ run Opts{..} = do
     & either putStrLn useAST
 
 main :: IO ()
-main = getOpts >>= run
+main = do
+  hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
+  getOpts >>= run

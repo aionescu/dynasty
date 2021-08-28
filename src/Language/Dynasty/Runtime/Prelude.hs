@@ -1,6 +1,7 @@
 module Language.Dynasty.Runtime.Prelude where
 
 import Control.Category((>>>))
+import Data.Function(fix)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Debug.Trace(trace)
@@ -23,13 +24,14 @@ typeOf (Fn _) = Ctor "Fn" []
 typeOf (IO _) = Ctor "IO" []
 
 prelude :: [String] -> Env
-prelude args =
+prelude args = fix \p ->
   M.fromList
   [ ("+", toVal $ (+) @Integer)
   , ("-", toVal $ (-) @Integer)
   , ("*", toVal $ (*) @Integer)
   , ("/", toVal $ quot @Integer)
   , ("%", toVal $ rem @Integer)
+  , ("^", toVal $ (^) @Integer @Integer)
   , ("<$>", toVal $ (<$>) @IO @Val @Val)
   , ("pure", toVal $ pure @IO @Val)
   , ("*>", toVal $ (*>) @IO @Val @Val)
@@ -52,4 +54,5 @@ prelude args =
   , ("charToNum", toVal $ toInteger . fromEnum @Char)
   , ("numToChar", toVal $ toEnum @Char . fromInteger)
   , (";", toVal $ (>>>) @(->) @Val @Val @Val)
+  , ("prelude", Rec p)
   ]

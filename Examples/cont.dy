@@ -1,0 +1,34 @@
+-- Implementing a Haskell-style ContT monad
+
+pure a = \k. k a and
+
+(<$>) f k = \k'. k (k' . f) and
+
+(<*>) kf ka = \kb. kf \f. ka (kb . f) and
+
+(>>=) ka f = \kb. ka \a. f a kb and
+
+callCC f = \k. f (\a. \_. k a) k and
+
+liftIO m = prelude.(>>=) m and
+
+run k = k and
+
+------------------------------------------------
+
+f x = pure (x + 1) and
+
+g x = pure (x * 2) and
+
+h x =
+  (callCC \exit.
+    case x of
+    | 0 -> exit -1
+    | _ ->
+        f x >>= \y.
+          g y >>= \z.
+            pure (z ^ 2)
+  ) >>= \r. liftIO (print (r, r))
+and
+
+main = run (h 3) prelude.pure

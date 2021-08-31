@@ -92,7 +92,9 @@ printVal (Ctor "Tuple" []) = pure ()
 printVal v = print v
 
 runEval :: [String] -> Reader Env Val -> IO ()
-runEval args m = printVal $ runReader m $ prelude args
+runEval args m = printVal $ runReader m $ M.insert "prelude" (Rec p) p
+  where
+    p = prelude args
 
 runTopLevel :: [String] -> BindingGroup  -> IO ()
 runTopLevel args bs = runEval args $ evalExpr $ Let bs $ Var "main"

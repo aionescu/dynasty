@@ -3,6 +3,7 @@ module Language.Dynasty.Runtime.Prelude where
 import Control.Category((>>>))
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
+import Data.Text(Text)
 import Debug.Trace(trace)
 
 import Language.Dynasty.Frontend.Syntax
@@ -17,12 +18,13 @@ mergeRecords _ _ = exn "Need records for merge"
 typeOf :: Val -> Val
 typeOf (Num _) = Ctor "Num" []
 typeOf (Char _) = Ctor "Char" []
+typeOf (Str _) = Ctor "Str" []
 typeOf (Ctor i as) = Ctor "Ctor" [toVal i, toVal $ toInteger $ length as]
 typeOf (Rec m) = Ctor "Rec" [toVal $ M.keys m]
 typeOf (Fn _) = Ctor "Fn" []
 typeOf (IO _) = Ctor "IO" []
 
-prelude :: [String] -> Env
+prelude :: [Text] -> Env
 prelude args =
   M.fromList
   [ ("+", toVal $ (+) @Integer)

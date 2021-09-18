@@ -1,5 +1,11 @@
 cradle:
   cabal:
+    - path: "src/Main.hs"
+      component: "dynasty:exe:dynasty"
+
+    - path: "src/Utils.hs"
+      component: "dynasty:exe:dynasty"
+
     - path: "src/Language/Dynasty/Frontend/Syntax.hs"
       component: "dynasty:exe:dynasty"
 
@@ -16,7 +22,4 @@ cradle:
       component: "dynasty:exe:dynasty"
 
     - path: "src/Opts.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Main.hs"
       component: "dynasty:exe:dynasty"

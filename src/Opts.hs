@@ -1,12 +1,13 @@
 module Opts(Opts(..), getOpts) where
 
+import Data.Text(Text)
 import Options.Applicative
 
 data Opts =
   Opts
   { optsDumpAST :: Bool
-  , optsPath :: String
-  , optsArgs :: [String]
+  , optsPath :: Text
+  , optsArgs :: [Text]
   }
 
 optsParser :: Parser Opts

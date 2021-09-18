@@ -1,15 +1,18 @@
 module Main where
 
 import Data.Function((&))
+import Data.Text(Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T.IO
 import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
 import Language.Dynasty.Frontend.Parser(parse)
 import Language.Dynasty.Runtime.Eval(runTopLevel)
 import Opts(Opts(..), getOpts)
 
-getCode :: String -> IO String
-getCode "-" = getContents
-getCode path = readFile path
+getCode :: Text -> IO Text
+getCode "-" = T.IO.getContents
+getCode path = T.IO.readFile $ T.unpack path
 
 run :: Opts -> IO ()
 run Opts{..} = do
@@ -18,7 +21,7 @@ run Opts{..} = do
 
   code
     & parse
-    & either putStrLn useAST
+    & either T.IO.putStrLn useAST
 
 main :: IO ()
 main = do

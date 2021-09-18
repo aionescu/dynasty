@@ -1,17 +1,20 @@
 module Language.Dynasty.Frontend.Parser where
 
+import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Char(isUpper, isLower)
 import Data.Functor((<&>), ($>))
 import Data.List(foldl', nub)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
-import Control.Monad.Except(liftEither, MonadError)
+import Data.Text(Text)
+import qualified Data.Text as T
 import Text.Parsec hiding (parse)
 
 import Language.Dynasty.Frontend.Syntax
+import Utils
 
-type Parser = Parsec String ()
+type Parser = Parsec Text ()
 
 comma, colon, equals, shebang, multiLine, singleLine, comment, ws :: Parser ()
 comma = ws <* char ',' <* ws
@@ -92,8 +95,8 @@ escaped quote = regular <|> unescaped
 charRaw :: Parser Char
 charRaw = parens '\'' '\'' $ escaped '\''
 
-strRaw :: Parser String
-strRaw = parens '"' '"' $ many $ escaped '"'
+strRaw :: Parser Text
+strRaw = parens '"' '"' $ T.pack <$> many (escaped '"')
 
 int :: Parser (Node a)
 int = NumLit <$> intRaw
@@ -106,7 +109,7 @@ explode _ [] = CtorLit "Nil" []
 explode f (c : cs) = CtorLit "::" [f c, explode f cs]
 
 str :: Parser (Node a)
-str = explode CharLit <$> strRaw
+str = StrLit <$> strRaw
 
 simpleLit :: Parser (Node a)
 simpleLit = try str <|> try char' <|> int
@@ -136,36 +139,36 @@ opRaw = notReserved =<< many1 opChar
       | i `elem` reservedOps = fail "Reserved operator"
       | otherwise = pure i
 
-varName :: Parser String
+varName :: Parser Text
 varName = identRaw >>= \case
   (c : _) | isUpper c -> fail "Variable names must begin with a lowercase letter."
-  i -> pure i
+  i -> pure $ T.pack i
 
-ctorName :: Parser String
+ctorName :: Parser Text
 ctorName = identRaw >>= \case
   (c : _) | isLower c -> fail "Constructor names must begin with an uppercase letter."
-  i -> pure i
+  i -> pure $ T.pack i
 
-varOp :: Parser String
+varOp :: Parser Text
 varOp = opRaw >>= \case
   (':' : _) -> fail "Variable operators cannot begin with ':'."
-  i -> pure i
+  i -> pure $ T.pack i
 
-ctorOp :: Parser String
+ctorOp :: Parser Text
 ctorOp = opRaw >>= \case
   (c : _) | c /= ':' -> fail "Constructor operators must begin with ':'."
-  i -> pure i
+  i -> pure $ T.pack i
 
-varIdent :: Parser String
+varIdent :: Parser Text
 varIdent = try varName <|> parens '(' ')' varOp
 
-ctorIdent :: Parser String
+ctorIdent :: Parser Text
 ctorIdent = try ctorName <|> parens '(' ')' ctorOp
 
-varInfix :: Parser String
+varInfix :: Parser Text
 varInfix = try varOp <|> parens '`' '`' varName
 
-ctorInfix :: Parser String
+ctorInfix :: Parser Text
 ctorInfix = try ctorOp <|> parens '`' '`' ctorName
 
 var :: Parser (Node a)
@@ -279,5 +282,5 @@ expr = exprVarOps
 program :: Parser BindingGroup
 program = option () shebang *> ws *> bindingGroup <* eof
 
-parse :: MonadError String m => String -> m BindingGroup
-parse = liftEither . first show . runParser program () ""
+parse :: MonadError Text m => Text -> m BindingGroup
+parse = liftEither . first showT . runParser program () ""

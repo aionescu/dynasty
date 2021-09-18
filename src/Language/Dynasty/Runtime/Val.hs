@@ -2,27 +2,29 @@ module Language.Dynasty.Runtime.Val where
 
 import Data.Char(isLetter)
 import Data.Foldable(toList)
-import Data.List(intercalate)
 import Data.Map.Lazy(Map)
 import qualified Data.Map.Lazy as M
 import Data.Proxy(Proxy(..))
+import Data.Text(Text)
+import qualified Data.Text as T
 import Data.Typeable(Typeable, typeRep)
 import Text.Parsec
-import Text.Read(readMaybe)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Frontend.Parser hiding (parse)
+import Utils
 
 data Val
   = Num Integer
   | Char Char
+  | Str Text
   | Ctor Ident [Val]
-  | Rec (Map String Val)
+  | Rec (Map Ident Val)
   | Fn (Val -> Val)
   | IO (IO Val)
   deriving stock Typeable
 
-exn :: String -> Val
+exn :: Text -> Val
 exn s = Ctor "Exception" [toVal s]
 
 class ToVal a where
@@ -51,11 +53,18 @@ instance OfVal Char where
   ofVal (Char c) = Just c
   ofVal _ = Nothing
 
+instance ToVal Text where
+  toVal = Str
+
+instance OfVal Text where
+  ofVal (Str s) = Just s
+  ofVal _ = Nothing
+
 instance ToVal Bool where
-  toVal b = Ctor (show b) []
+  toVal b = Ctor (showT b) []
 
 instance OfVal Bool where
-  ofVal (Ctor i []) = readMaybe i
+  ofVal (Ctor i []) = readT i
   ofVal _ = Nothing
 
 instance ToVal a => ToVal (IO a) where
@@ -94,7 +103,7 @@ instance OfVal a => OfVal (Maybe a) where
 instance (Typeable a, OfVal a, ToVal b) => ToVal (a -> b) where
   toVal f = Fn \v ->
     case ofVal v of
-      Nothing -> exn $ "Expected something that looks like '" ++ show (typeRep $ Proxy @a) ++ "', but found: " ++ show v ++ "."
+      Nothing -> exn $ "Expected something that looks like '" <> showT (typeRep $ Proxy @a) <> "', but found: " <> showT v <> "."
       Just a -> toVal $ f a
 
 instance OfVal (Val -> Val) where
@@ -105,54 +114,55 @@ instance OfVal (Val -> IO Val) where
   ofVal (Fn f) = Just \a ->
     case f a of
       IO v -> v
-      v -> pure $ exn $ "Expected IO value, found pure value: " ++ show v ++ "."
+      v -> pure $ exn $ "Expected IO value, found pure value: " <> showT v <> "."
 
   ofVal _ = Nothing
 
-showIdent :: String -> String
-showIdent i | isLetter $ head i = i
-showIdent i = "(" ++ i ++ ")"
+showIdent :: Ident -> Text
+showIdent i | isLetter $ T.head i = i
+showIdent i = "(" <> i <> ")"
 
-showRecord :: Map String Val -> String
+showRecord :: Map Ident Val -> Text
 showRecord r
   | M.null r = "{ }"
-  | otherwise = "{ " ++ intercalate ", " (uncurry showField <$> M.toList r) ++ " }"
+  | otherwise = "{ " <> T.intercalate ", " (uncurry showField <$> M.toList r) <> " }"
   where
-    showField i v = showIdent i ++ " = " ++ showVal False v
+    showField i v = showIdent i <> " = " <> showVal False v
 
-showList' :: Show a => [a] -> String
-showList' l = "[" ++ intercalate ", " (show <$> l) ++ "]"
+showList' :: Show a => [a] -> Text
+showList' l = "[" <> T.intercalate ", " (showT <$> l) <> "]"
 
-showCtor :: Bool -> Ident -> [Val] -> String
+showCtor :: Bool -> Ident -> [Val] -> Text
 showCtor _ "Tuple" [] = "()"
-showCtor _ "Tuple" [a] = "(" ++ showVal False a ++ ",)"
-showCtor _ "Tuple" as = "(" ++ intercalate ", " (showVal False <$> as) ++ ")"
+showCtor _ "Tuple" [a] = "(" <> showVal False a <> ",)"
+showCtor _ "Tuple" as = "(" <> T.intercalate ", " (showVal False <$> as) <> ")"
 
 showCtor _ "Nil" [] = "[]"
 showCtor _ "::" as
-  | Just (s :: String) <- ofVal (Ctor "::" as) = show s
+  | Just (s :: String) <- ofVal (Ctor "::" as) = showT s
   | Just (l :: [Val]) <- ofVal (Ctor "::" as) = showList' l
 
 showCtor _ i [] = showIdent i
 
 showCtor False i [a, b]
-  | not $ isLetter $ head i = showVal True a ++ " " ++ i ++ " " ++ showVal True b
+  | not $ isLetter $ T.head i = showVal True a <> " " <> i <> " " <> showVal True b
 showCtor True i [a, b]
-  | not $ isLetter $ head i = "(" ++ showVal True a ++ " " ++ i ++ " " ++ showVal True b ++ ")"
+  | not $ isLetter $ T.head i = "(" <> showVal True a <> " " <> i <> " " <> showVal True b <> ")"
 
-showCtor False i as = showIdent i ++ " " ++ unwords (showVal True <$> as)
-showCtor True i as = "(" ++ showIdent i ++ " " ++ unwords (showVal True <$> as) ++ ")"
+showCtor False i as = showIdent i <> " " <> T.unwords (showVal True <$> as)
+showCtor True i as = "(" <> showIdent i <> " " <> T.unwords (showVal True <$> as) <> ")"
 
-showVal :: Bool -> Val -> String
-showVal _ (Num i) = show i
-showVal _ (Char c) = show c
+showVal :: Bool -> Val -> Text
+showVal _ (Num i) = showT i
+showVal _ (Char c) = showT c
+showVal _ (Str s) = showT s
 showVal _ (Rec m) = showRecord m
 showVal needParens (Ctor i as) = showCtor needParens i as
 showVal _ Fn{} = "<λ>"
 showVal _ IO{} = "<🗲>"
 
 instance Show Val where
-  show = showVal False
+  show = T.unpack . showVal False
 
 instance Eq Val where
   Num a == Num b = a == b
@@ -204,7 +214,7 @@ val :: Parser Val
 val = valCtorOps
 
 withRest :: Parser a -> Parser (a, String)
-withRest p = (,) <$> p <*> getInput
+withRest p = (,) <$> p <*> (T.unpack <$> getInput)
 
 instance Read Val where
-  readsPrec _ = toList . parse (withRest val) ""
+  readsPrec _ = toList . parse (withRest val) "" . T.pack

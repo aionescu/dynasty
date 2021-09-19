@@ -68,4 +68,4 @@ and
 
 eval ops = evalOps ops tape *> pure () and
 
-main = (head <$> getArgs) >>= readFile >>= (parse; eval)
+main = (head <$> getArgs) >>= readFile >>= (explode; parse; eval)

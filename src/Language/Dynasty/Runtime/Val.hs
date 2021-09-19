@@ -139,7 +139,6 @@ showCtor _ "Tuple" as = "(" <> T.intercalate ", " (showVal False <$> as) <> ")"
 
 showCtor _ "Nil" [] = "[]"
 showCtor _ "::" as
-  | Just (s :: String) <- ofVal (Ctor "::" as) = showT s
   | Just (l :: [Val]) <- ofVal (Ctor "::" as) = showList' l
 
 showCtor _ i [] = showIdent i

@@ -1,0 +1,31 @@
+return a s = Just (a, s) and
+fail _ = Nothing and
+
+satisfy f = \case
+  | [] -> Nothing
+  | (c :: cs) ->
+      case f c of
+      | False -> Nothing
+      | True -> Just (c, cs)
+and
+
+char c = satisfy ((==) c) and
+
+(<|>) a b s =
+  case a s of
+  | Nothing -> b s
+  | a' -> a'
+and
+
+(<+>) a b s =
+  case a s of
+  | Nothing -> Nothing
+  | Just (a', s') ->
+      case b s' of
+      | Nothing -> Nothing
+      | Just (b', s'') -> Just ((a', b'), s'')
+and
+
+run p s = p (explode s) and
+
+main = run (char 'a' <+> (char 'b' <|> char 'c')) "abc"

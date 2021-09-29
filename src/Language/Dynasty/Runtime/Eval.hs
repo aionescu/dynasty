@@ -10,6 +10,7 @@ import Data.Functor((<&>))
 import qualified Data.Map.Lazy as M
 import Data.Maybe(fromMaybe)
 import Data.Text(Text)
+import qualified Data.Vector as V
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
@@ -24,7 +25,7 @@ evalExpr (Var i) = asks $ fromMaybe (exn $ "Variable '" <> i <> "' does not exis
 
 evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
-evalExpr (CtorLit i es) = Ctor i <$> traverse evalExpr es
+evalExpr (CtorLit i es) = Ctor i . V.fromList <$> traverse evalExpr es
 
 evalExpr (Lam ps) =
   asks \env ->
@@ -75,7 +76,7 @@ evalPat (Char c) (CharLit d)
   | c == d = pure ()
   | otherwise = fail'
 evalPat (Ctor c vs) (CtorLit c' ps)
-  | c == c' && length vs == length ps = zipWithM_ evalPat vs ps
+  | c == c' && length vs == length ps = zipWithM_ evalPat (V.toList vs) ps
 evalPat (Rec m) (RecLit m')
   | M.null $ M.difference m' m = traverse_ (uncurry evalPat) $ M.elems $ M.intersectionWith (,) m m'
   | otherwise = fail'

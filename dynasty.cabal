@@ -75,6 +75,7 @@ executable dynasty
     MultiParamTypeClasses
     MultiWayIf
     NamedFieldPuns
+    OverloadedLists
     OverloadedStrings
     PatternSynonyms
     RankNTypes

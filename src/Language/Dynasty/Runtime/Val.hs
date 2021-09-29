@@ -8,6 +8,8 @@ import Data.Proxy(Proxy(..))
 import Data.Text(Text)
 import qualified Data.Text as T
 import Data.Typeable(Typeable, typeRep)
+import Data.Vector(Vector)
+import qualified Data.Vector as V
 import Text.Parsec
 
 import Language.Dynasty.Frontend.Syntax
@@ -15,13 +17,13 @@ import Language.Dynasty.Frontend.Parser hiding (parse)
 import Utils
 
 data Val
-  = Num Integer
-  | Char Char
-  | Str Text
-  | Ctor Ident [Val]
-  | Rec (Map Ident Val)
-  | Fn (Val -> Val)
-  | IO (IO Val)
+  = Num !Integer
+  | Char !Char
+  | Str !Text
+  | Ctor !Ident !(Vector Val)
+  | Rec !(Map Ident Val)
+  | Fn !(Val -> Val)
+  | IO !(IO Val)
   deriving stock Typeable
 
 exn :: Text -> Val
@@ -61,7 +63,7 @@ instance OfVal Text where
   ofVal _ = Nothing
 
 instance ToVal Bool where
-  toVal b = Ctor (showT b) []
+  toVal b = Ctor (showT b) V.empty
 
 instance OfVal Bool where
   ofVal (Ctor i []) = readT i
@@ -132,10 +134,10 @@ showRecord r
 showList' :: Show a => [a] -> Text
 showList' l = "[" <> T.intercalate ", " (showT <$> l) <> "]"
 
-showCtor :: Bool -> Ident -> [Val] -> Text
+showCtor :: Bool -> Ident -> Vector Val -> Text
 showCtor _ "Tuple" [] = "()"
 showCtor _ "Tuple" [a] = "(" <> showVal False a <> ",)"
-showCtor _ "Tuple" as = "(" <> T.intercalate ", " (showVal False <$> as) <> ")"
+showCtor _ "Tuple" as = "(" <> T.intercalate ", " (showVal False <$> V.toList as) <> ")"
 
 showCtor _ "Nil" [] = "[]"
 showCtor _ "::" as
@@ -148,8 +150,8 @@ showCtor False i [a, b]
 showCtor True i [a, b]
   | not $ isLetter $ T.head i = "(" <> showVal True a <> " " <> i <> " " <> showVal True b <> ")"
 
-showCtor False i as = showIdent i <> " " <> T.unwords (showVal True <$> as)
-showCtor True i as = "(" <> showIdent i <> " " <> T.unwords (showVal True <$> as) <> ")"
+showCtor False i as = showIdent i <> " " <> T.unwords (showVal True <$> V.toList as)
+showCtor True i as = "(" <> showIdent i <> " " <> T.unwords (showVal True <$> V.toList as) <> ")"
 
 showVal :: Bool -> Val -> Text
 showVal _ (Num i) = showT i
@@ -180,7 +182,7 @@ strVal :: Parser Val
 strVal = toVal <$> strRaw
 
 tupVal :: Parser Val
-tupVal = tuple (Ctor "Tuple") val
+tupVal = tuple (Ctor "Tuple" . V.fromList) val
 
 listVal :: Parser Val
 listVal = list toVal val
@@ -201,7 +203,7 @@ valSimple :: Parser Val
 valSimple = choice (try <$> [recVal, listVal, tupVal, strVal, charVal, numVal, ctorValSimple]) <* ws
 
 valCtorApp :: Parser Val
-valCtorApp = try (Ctor <$> (ctorIdent <* ws) <*> many (valSimple <* ws)) <|> valSimple
+valCtorApp = try (Ctor <$> (ctorIdent <* ws) <*> (V.fromList <$> many (valSimple <* ws))) <|> valSimple
 
 appCtorVal :: Ident -> Val -> Val -> Val
 appCtorVal c a b = Ctor c [a, b]

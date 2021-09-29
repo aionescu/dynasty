@@ -15,6 +15,9 @@ cradle:
     - path: "src/Language/Dynasty/Runtime/Val.hs"
       component: "dynasty:exe:dynasty"
 
+    - path: "src/Language/Dynasty/Runtime/FFI.hs"
+      component: "dynasty:exe:dynasty"
+
     - path: "src/Language/Dynasty/Runtime/Prelude.hs"
       component: "dynasty:exe:dynasty"
 

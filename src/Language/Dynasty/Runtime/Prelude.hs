@@ -10,6 +10,7 @@ import Debug.Trace(trace)
 
 import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Runtime.Val
+import Language.Dynasty.Runtime.FFI
 import Utils
 
 type Env = Map Ident Val

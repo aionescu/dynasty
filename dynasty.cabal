@@ -22,6 +22,7 @@ executable dynasty
     Language.Dynasty.Frontend.Syntax
     Language.Dynasty.Frontend.Parser
     Language.Dynasty.Runtime.Val
+    Language.Dynasty.Runtime.FFI
     Language.Dynasty.Runtime.Prelude
     Language.Dynasty.Runtime.Eval
     Opts

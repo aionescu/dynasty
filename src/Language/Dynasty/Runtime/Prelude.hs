@@ -2,15 +2,15 @@ module Language.Dynasty.Runtime.Prelude where
 
 import Control.Category((>>>))
 import Data.Map.Lazy(Map)
-import qualified Data.Map.Lazy as M
+import Data.Map.Lazy qualified as M
 import Data.Text(Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T.IO
+import Data.Text qualified as T
+import Data.Text.IO qualified as T.IO
 import Debug.Trace(trace)
 
 import Language.Dynasty.Frontend.Syntax
-import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.FFI
+import Language.Dynasty.Runtime.Val
 import Utils
 
 type Env = Map Ident Val

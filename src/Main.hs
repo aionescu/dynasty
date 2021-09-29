@@ -2,8 +2,8 @@ module Main where
 
 import Data.Function((&))
 import Data.Text(Text)
-import qualified Data.Text as T
-import qualified Data.Text.IO as T.IO
+import Data.Text qualified as T
+import Data.Text.IO qualified as T.IO
 import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
 import Language.Dynasty.Frontend.Parser(parse)

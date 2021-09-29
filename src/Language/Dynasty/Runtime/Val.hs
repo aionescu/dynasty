@@ -3,16 +3,16 @@ module Language.Dynasty.Runtime.Val where
 import Data.Char(isLetter)
 import Data.Foldable(toList)
 import Data.Map.Lazy(Map)
-import qualified Data.Map.Lazy as M
+import Data.Map.Lazy qualified as M
 import Data.Text(Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Data.Typeable(Typeable)
 import Data.Vector(Vector)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Text.Parsec
 
-import Language.Dynasty.Frontend.Syntax
 import Language.Dynasty.Frontend.Parser hiding (parse)
+import Language.Dynasty.Frontend.Syntax
 import Utils
 
 data Val

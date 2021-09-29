@@ -7,14 +7,14 @@ import Control.Monad.Reader(runReader, Reader, asks, MonadReader(ask, local))
 import Control.Monad.State(execStateT, modify, MonadState)
 import Data.Foldable(traverse_)
 import Data.Functor((<&>))
-import qualified Data.Map.Lazy as M
+import Data.Map.Lazy qualified as M
 import Data.Maybe(fromMaybe)
 import Data.Text(Text)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 
 import Language.Dynasty.Frontend.Syntax
-import Language.Dynasty.Runtime.Val
 import Language.Dynasty.Runtime.Prelude
+import Language.Dynasty.Runtime.Val
 import Utils
 
 evalExpr :: (MonadFix m, MonadReader Env m) => Expr -> m Val

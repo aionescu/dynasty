@@ -1,7 +1,7 @@
 module Utils where
 
 import Data.Text(Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Read(readMaybe)
 
 showT :: Show a => a -> Text

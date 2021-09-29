@@ -70,6 +70,7 @@ executable dynasty
     FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
+    ImportQualifiedPost
     InstanceSigs
     KindSignatures
     LambdaCase

@@ -6,9 +6,9 @@ import Data.Char(isUpper, isLower)
 import Data.Functor((<&>), ($>))
 import Data.List(foldl', nub)
 import Data.Map.Lazy(Map)
-import qualified Data.Map.Lazy as M
+import Data.Map.Lazy qualified as M
 import Data.Text(Text)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Text.Parsec hiding (parse)
 
 import Language.Dynasty.Frontend.Syntax

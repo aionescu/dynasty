@@ -3,7 +3,7 @@ module Language.Dynasty.Runtime.FFI where
 import Data.Proxy(Proxy(..))
 import Data.Text(Text)
 import Data.Typeable(Typeable, typeRep)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 
 import Language.Dynasty.Runtime.Val
 import Utils

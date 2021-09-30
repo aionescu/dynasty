@@ -1,6 +1,5 @@
 module Language.Dynasty.Runtime.Eval(runTopLevel) where
 
-import Control.Monad(zipWithM_)
 import Control.Monad.Except(MonadError(throwError))
 import Control.Monad.Fix(MonadFix)
 import Control.Monad.Reader(runReader, Reader, asks, MonadReader(ask, local))
@@ -10,6 +9,7 @@ import Data.Functor((<&>))
 import Data.Map.Lazy qualified as M
 import Data.Maybe(fromMaybe)
 import Data.Text(Text)
+import Data.Vector(Vector)
 import Data.Vector qualified as V
 
 import Language.Dynasty.Frontend.Syntax
@@ -25,9 +25,19 @@ evalExpr (Var i) = asks $ fromMaybe (exn $ "Variable '" <> i <> "' does not exis
 
 evalExpr (RecLit m) = Rec <$> traverse evalExpr m
 
-evalExpr (CtorLit i es) = Ctor i . V.fromList <$> traverse evalExpr es
+evalExpr (CtorLit i es) = Ctor i <$> traverse evalExpr es
 
-evalExpr (Lam ps) =
+evalExpr (Case e ps) = do
+  env <- ask
+  v <- evalExpr e
+  pure $ runReader (tryBranches v ps) env
+
+evalExpr (Lam i e) =
+  asks \env ->
+    Fn \v ->
+      runReader (evalExpr e) $ M.insert i v env
+
+evalExpr (LamCase ps) =
   asks \env ->
     Fn \v ->
       runReader (tryBranches v ps) env
@@ -56,9 +66,9 @@ tryBranch env v p =
     Left _ -> Nothing
     Right e -> Just e
 
-tryBranches :: (MonadFix m, MonadReader Env m) => Val -> [(Pat, Expr)] -> m Val
-tryBranches v [] = pure $ exn $ "Incomplete pattern match on: " <> showT v <> "."
-tryBranches v ((p, e) : ps) =
+tryBranches :: (MonadFix m, MonadReader Env m) => Val -> Vector (Pat, Expr) -> m Val
+tryBranches v (V.uncons -> Nothing) = pure $ exn $ "Incomplete pattern match on: " <> showT v <> "."
+tryBranches v (V.uncons -> Just ((p, e), ps)) =
   ask >>= \env ->
     case tryBranch env v p of
       Nothing -> tryBranches v ps
@@ -76,7 +86,7 @@ evalPat (Char c) (CharLit d)
   | c == d = pure ()
   | otherwise = fail'
 evalPat (Ctor c vs) (CtorLit c' ps)
-  | c == c' && length vs == length ps = zipWithM_ evalPat (V.toList vs) ps
+  | c == c' && length vs == length ps = V.zipWithM_ evalPat vs ps
 evalPat (Rec m) (RecLit m')
   | M.null $ M.difference m' m = traverse_ (uncurry evalPat) $ M.elems $ M.intersectionWith (,) m m'
   | otherwise = fail'

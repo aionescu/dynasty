@@ -2,6 +2,7 @@ module Language.Dynasty.Frontend.Syntax where
 
 import Data.Map.Lazy(Map)
 import Data.Text(Text)
+import Data.Vector(Vector)
 
 type Ident = Text
 
@@ -9,20 +10,23 @@ type Ident = Text
 data NodeKind = E | P
 
 data Node :: NodeKind -> * where
-  NumLit :: Integer -> Node a
-  CharLit :: Char -> Node a
-  StrLit :: Text -> Node a
-  RecLit :: Map Ident (Node a) -> Node a
-  RecWildcard :: Map Ident Pat -> Pat
-  CtorLit :: Ident -> [Node a] -> Node a
-  Var :: Ident -> Node a
-  RecMember :: Expr -> Ident -> Expr
-  Lam :: [(Pat, Expr)] -> Expr
-  App :: Expr -> Expr -> Expr
-  Let :: BindingGroup -> Expr -> Expr
-  OfType :: Ident -> Pat -> Pat
+  NumLit :: !Integer -> Node a
+  CharLit :: !Char -> Node a
+  StrLit :: !Text -> Node a
+  RecLit :: !(Map Ident (Node a)) -> Node a
+  CtorLit :: !Ident -> !(Vector (Node a)) -> Node a
+  Var :: !Ident -> Node a
+  RecMember :: !Expr -> !Ident -> Expr
+  Case :: !Expr -> !(Vector (Pat, Expr)) -> Expr
+  Lam :: !Ident -> !Expr -> Expr
+  LamCase :: !(Vector (Pat, Expr)) -> Expr
+  App :: !Expr -> !Expr -> Expr
+  Let :: !BindingGroup -> !Expr -> Expr
+
+  RecWildcard :: !(Map Ident Pat) -> Pat
+  OfType :: !Ident -> !Pat -> Pat
   Wildcard :: Pat
-  As :: Ident -> Pat -> Pat
+  As :: !Ident -> !Pat -> Pat
 
 deriving instance Show (Node a)
 

@@ -95,7 +95,7 @@ strVal :: Parser Val
 strVal = Str <$> strRaw
 
 tupVal :: Parser Val
-tupVal = tuple (Ctor "Tuple" . V.fromList) val
+tupVal = tuple (Ctor "Tuple") val
 
 buildList :: [Val] -> Val
 buildList [] = Ctor "Nil" []

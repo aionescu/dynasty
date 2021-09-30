@@ -9,6 +9,8 @@ import Data.Map.Lazy(Map)
 import Data.Map.Lazy qualified as M
 import Data.Text(Text)
 import Data.Text qualified as T
+import Data.Vector(Vector)
+import Data.Vector qualified as V
 import Text.Parsec hiding (parse)
 
 import Language.Dynasty.Frontend.Syntax
@@ -29,7 +31,7 @@ ws = spaces *> skipMany (comment *> spaces)
 parens :: Char -> Char -> Parser a -> Parser a
 parens begin end = between (char begin *> ws) (char end *> ws)
 
-tuple :: ([a] -> a) -> Parser a -> Parser a
+tuple :: (Vector a -> a) -> Parser a -> Parser a
 tuple mk term = parens '(' ')' $ uncurry mkTup <$> elems
   where
     withTrailing = (, True) <$> many (term <* comma)
@@ -37,7 +39,7 @@ tuple mk term = parens '(' ')' $ uncurry mkTup <$> elems
     elems = try withTrailing <|> noTrailing
 
     mkTup [a] False = a
-    mkTup l _ = mk l
+    mkTup l _ = mk $ V.fromList l
 
 recField :: Parser (Node a) -> Parser (Ident, Node a)
 recField p = mkField <$> (varIdent <* ws) <*> optionMaybe (try $ equals *> p)
@@ -190,13 +192,16 @@ recLitPat :: Parser Pat
 recLitPat = recLit pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 
 mkLam :: [Pat] -> Expr -> Expr
-mkLam = flip $ foldr \p e -> Lam [(p, e)]
+mkLam = flip $ foldr \p e ->
+  case p of
+    Var i -> Lam i e
+    _ -> LamCase [(p, e)]
 
 caseBranch :: Parser (Pat, Expr)
 caseBranch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
 
 lamCase :: Parser Expr
-lamCase = string "case" *> ws *> many (caseBranch <* ws) <&> Lam
+lamCase = string "case" *> ws *> many (caseBranch <* ws) <&> LamCase . V.fromList
 
 lamVars :: Parser Expr
 lamVars = mkLam <$> (many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
@@ -224,9 +229,7 @@ let' =
   <*> (string "in" *> ws *> expr)
 
 case' :: Parser Expr
-case' = mkCase <$> (string "case" *> ws *> expr <* ws <* string "of" <* ws) <*> many caseBranch
-  where
-    mkCase e bs = App (Lam bs) e
+case' = Case <$> (string "case" *> ws *> expr <* ws <* string "of" <* ws) <*> (V.fromList <$> many caseBranch)
 
 exprSimple :: Parser Expr
 exprSimple = choice (try <$> [let', lam, case', recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
@@ -244,7 +247,7 @@ patSimple :: Parser Pat
 patSimple = choice (try <$> [asPat, ofType, wildcard, recLitPat, listLit pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
 
 patCtorApp :: Parser Pat
-patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> many (patSimple <* ws)) <|> patSimple
+patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> (V.fromList <$> many (patSimple <* ws))) <|> patSimple
 
 patCtorOps :: Parser Pat
 patCtorOps = chainl1 patCtorApp $ try $ appCtor <$> (ctorInfix <* ws)
@@ -258,11 +261,11 @@ member = foldl' RecMember <$> exprSimple <*> try (many1 (char '.' *> varIdent))
 exprMember :: Parser Expr
 exprMember = try member <|> exprSimple
 
-appHead :: Parser ([Expr] -> Expr)
+appHead :: Parser (Vector Expr -> Expr)
 appHead = (try (CtorLit <$> ctorIdent) <|> foldl' App <$> exprMember) <* ws
 
 exprApp :: Parser Expr
-exprApp = appHead <*> many (exprMember <* ws)
+exprApp = appHead <*> (V.fromList <$> many (exprMember <* ws))
 
 appCtor :: Ident -> Node a -> Node a -> Node a
 appCtor c a b = CtorLit c [a, b]

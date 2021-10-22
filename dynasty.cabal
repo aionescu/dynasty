@@ -1,4 +1,4 @@
-cabal-version: 2.0
+cabal-version: 3.6
 
 name: dynasty
 version: 0.0.0.0
@@ -6,10 +6,10 @@ synopsis: Dynamically-typed purely functional programming language
 description: Please see the README on GitHub at <https://github.com/aionescu/dynasty#readme>
 homepage: https://github.com/aionescu/dynasty#readme
 bug-reports: https://github.com/aionescu/dynasty/issues
-license: GPL-3
+license: GPL-3.0-only
 license-file: LICENSE.txt
 maintainer: alxi.2001@gmail.com
-copyright: Copyright (C) 2020 Alex Ionescu
+copyright: Copyright (C) 2020-2021 Alex Ionescu
 category: Interpreter
 build-type: Simple
 extra-source-files: README.md
@@ -26,15 +26,11 @@ executable dynasty
     Language.Dynasty.Runtime.Prelude
     Language.Dynasty.Runtime.Eval
     Opts
-    Paths_dynasty
-
-  autogen-modules:
-    Paths_dynasty
 
   hs-source-dirs: src
 
   build-depends:
-    base >=4.13 && <5
+    base >=4.14 && <5
     , containers ^>= 0.6.2
     , mtl ^>= 2.2.2
     , optparse-applicative ^>= 0.16.1
@@ -48,6 +44,10 @@ executable dynasty
     -with-rtsopts=-N
     -Wall
     -Wincomplete-uni-patterns
+    -Wprepositive-qualified-module
+    -Wmissing-deriving-strategies
+    -Wunused-packages
+    -Wno-star-is-type
 
   default-extensions:
     ApplicativeDo

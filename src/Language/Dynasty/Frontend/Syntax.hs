@@ -28,7 +28,7 @@ data Node :: NodeKind -> * where
   Wildcard :: Pat
   As :: !Ident -> !Pat -> Pat
 
-deriving instance Show (Node a)
+deriving stock instance Show (Node a)
 
 type Expr = Node 'E
 type Pat = Node 'P

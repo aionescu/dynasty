@@ -1,5 +1,7 @@
 # dynasty
 
+<img src="Assets/Logo.png" alt="Dynasty Logo" width="100" height="100"/>
+
 Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
 
 *:construction: Dynasty is still very early in development. Expect things to change and/or break often. :construction:*

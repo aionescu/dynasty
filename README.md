@@ -1,6 +1,8 @@
-# dynasty
+<div align="center">
+  <h1>dynasty</h1>
 
-<img src="Assets/Logo.png" alt="Dynasty Logo" width="150" height="150"/>
+  <img src="Assets/Logo.png" alt="Dynasty Logo" width="150" height="150"/>
+</div>
 
 Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
 

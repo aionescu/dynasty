@@ -1,28 +1,4 @@
 cradle:
   cabal:
-    - path: "src/Main.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Utils.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Frontend/Syntax.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Frontend/Parser.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Runtime/Val.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Runtime/FFI.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Runtime/Prelude.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Language/Dynasty/Runtime/Eval.hs"
-      component: "dynasty:exe:dynasty"
-
-    - path: "src/Opts.hs"
+    - path: "src"
       component: "dynasty:exe:dynasty"

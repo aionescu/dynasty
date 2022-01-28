@@ -6,8 +6,6 @@
 
 Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
 
-*:construction: Dynasty is still very early in development. Expect things to change and/or break often. :construction:*
-
 ## Examples
 
 You can find some test programs in the [Examples](Examples) folder.

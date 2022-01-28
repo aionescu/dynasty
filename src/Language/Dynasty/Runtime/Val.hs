@@ -1,3 +1,5 @@
+{-# LANGUAGE StrictData #-}
+
 module Language.Dynasty.Runtime.Val where
 
 import Data.Char(isLetter)
@@ -16,13 +18,13 @@ import Language.Dynasty.Frontend.Syntax
 import Utils
 
 data Val
-  = Num !Integer
-  | Char !Char
-  | Str !Text
-  | Ctor !Ident !(Vector Val)
-  | Rec !(Map Ident Val)
-  | Fn !(Val -> Val)
-  | IO !(IO Val)
+  = Num Integer
+  | Char Char
+  | Str Text
+  | Ctor Ident (Vector Val)
+  | Rec (Map Ident Val)
+  | Fn (Val -> Val)
+  | IO (IO Val)
   deriving stock Typeable
 
 exn :: Text -> Val

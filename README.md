@@ -1,24 +1,45 @@
 <div align="center">
   <h1>dynasty</h1>
 
-  <img src="Assets/Logo.png" alt="Dynasty Logo" width="150" height="150"/>
+  <img src="assets/logo.png" alt="Dynasty Logo" width="150" height="150"/>
 </div>
 
 Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
 
 ## Examples
 
-You can find some test programs in the [Examples](Examples) folder.
+You can find some test programs in the [examples](examples) folder.
 
-The most interesting one is the [Brainfuck interpreter](Examples/BF/bf.dy).
+The most interesting one is the [Brainfuck interpreter](examples/bf/bf.dy).
 
 ## Building & running
 
-To build the project, you will need `cabal`, which can be found [here](https://www.haskell.org/platform/).
+### Prerequisites
 
-To build, run `cabal build` in the root of the repo.
+* GHC (>= 9.0.2)
+* cabal (>= 3.6)
 
-You can then either install the package globally running `cabal install`, or run the local build with `cabal run` (e.g. `cabal run . Examples/fac.dy`).
+(Can be installed via [ghcup](https://www.haskell.org/ghcup/))
+
+### Build the interpreter
+
+```sh
+cabal build
+```
+
+### Run the interpreter
+
+```sh
+cabal run . <script file> <script args>
+```
+
+If not already built, `cabal run` will also build the project.
+
+e.g.
+
+```sh
+cabal run . examples/fac.dy
+```
 
 ## License
 

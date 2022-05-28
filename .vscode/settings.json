@@ -1,9 +1,5 @@
 {
   "markdownlint.config": {
-    "default": true,
-    "single-trailing-newline": true,
-    "line-length": false,
-    "first-line-heading": false,
-    "html": false
+    "first-line-heading": false
   }
 }

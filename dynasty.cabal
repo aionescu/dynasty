@@ -9,7 +9,7 @@ bug-reports: https://github.com/aionescu/dynasty/issues
 license: GPL-3.0-only
 license-file: LICENSE.txt
 maintainer: alxi.2001@gmail.com
-copyright: Copyright (C) 2020-2021 Alex Ionescu
+copyright: Copyright (C) 2020-2022 Alex Ionescu
 category: Interpreter
 build-type: Simple
 extra-source-files: README.md

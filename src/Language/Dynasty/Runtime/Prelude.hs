@@ -138,7 +138,6 @@ prelude args =
   , ("print", toVal $ print @Val)
   , ("putStrLn", toVal T.IO.putStrLn)
   , ("show", toVal $ showT @Val)
-  , ("read", toVal $ readT @Val)
   , ("==", toVal $ (==) @Val)
   , (".", toVal $ (.) @Val @Val @Val)
   , ("&", toVal mergeRecords)

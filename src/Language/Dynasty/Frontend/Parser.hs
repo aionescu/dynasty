@@ -3,118 +3,47 @@ module Language.Dynasty.Frontend.Parser where
 import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Char(isUpper, isLower)
+import Data.Containers.ListUtils(nubOrd)
+import Data.Foldable(foldl')
+import Data.Function(on)
 import Data.Functor((<&>), ($>))
-import Data.List(foldl', nub)
-import Data.Map.Lazy(Map)
-import Data.Map.Lazy qualified as M
+import Data.Map.Strict qualified as M
 import Data.Text(Text)
 import Data.Text qualified as T
 import Data.Vector(Vector)
 import Data.Vector qualified as V
-import Text.Parsec hiding (parse)
+import Data.Void(Void)
+import Text.Megaparsec hiding (parse)
+import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Frontend.Syntax
-import Utils
 
-type Parser = Parsec Text ()
+type Parser = Parsec Void Text
 
-comma, colon, equals, shebang, multiLine, singleLine, comment, ws :: Parser ()
-comma = ws <* char ',' <* ws
-colon = ws <* char ':' <* ws
-equals = ws <* char '=' <* ws
-shebang = try $ string "#!" *> manyTill anyChar (endOfLine $> ()) $> ()
-multiLine = try $ string "{-" *> manyTill (multiLine <|> (anyChar $> ())) (try $ string "-}") $> ()
-singleLine = try $ string "--" *> manyTill anyChar (eof <|> endOfLine $> ()) $> ()
-comment = singleLine <|> multiLine
-ws = spaces *> skipMany (comment *> spaces)
+lineComm :: Parser ()
+lineComm = L.skipLineComment "--"
 
-parens :: Char -> Char -> Parser a -> Parser a
-parens begin end = between (char begin *> ws) (char end *> ws)
+blockComm :: Parser ()
+blockComm = L.skipBlockCommentNested "{-" "-}"
 
-tuple :: (Vector a -> a) -> Parser a -> Parser a
-tuple mk term = parens '(' ')' $ uncurry mkTup <$> elems
-  where
-    withTrailing = (, True) <$> many (term <* comma)
-    noTrailing = (, False) <$> sepBy1 term comma
-    elems = try withTrailing <|> noTrailing
+shebang :: Parser ()
+shebang = L.skipLineComment "#!" <* newline
 
-    mkTup [a] False = a
-    mkTup l _ = mk $ V.fromList l
+sc :: Parser ()
+sc = L.space space1 lineComm blockComm
 
-recField :: Parser (Node a) -> Parser (Ident, Node a)
-recField p = mkField <$> (varIdent <* ws) <*> optionMaybe (try $ equals *> p)
-  where
-    mkField i Nothing = (i, Var i)
-    mkField i (Just n) = (i, n)
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
 
-record :: Parser (Ident, f) -> (Map Ident f -> Bool -> Parser a) -> Parser a
-record term f = parens '{' '}' elems >>= unique >>= uncurry f
-  where
-    withTrailing = (,) <$> many (term <* comma) <*> option False (string ".." *> ws $> True)
-    noTrailing = (, False) <$> sepBy1 term comma
-    elems = try withTrailing <|> noTrailing
+symbol :: Text -> Parser Text
+symbol = L.symbol sc
 
-    unique (es, b) =
-      let es' = fst <$> es
-      in
-        if nub es' == es'
-        then pure (M.fromList es, b)
-        else fail "Fields in a record must be unique"
+btwn :: Text -> Text -> Parser a -> Parser a
+btwn = between `on` symbol
 
-recLit :: Parser (Node k) -> (Map Ident (Node k) -> Bool -> Parser a) -> Parser a
-recLit = record . recField
-
-list :: ([a] -> b) -> Parser a -> Parser b
-list f p = f <$> parens '[' ']' ((p <* ws) `sepEndBy` comma)
-
-listLit :: Parser (Node a) -> Parser (Node a)
-listLit = list $ explode id
-
-number :: (Read a, Num a) => Parser a
-number = read <$> many1 digit
-
-intRaw :: Parser Integer
-intRaw = sign <*> number
-  where
-    sign = option id (char '-' $> negate)
-
-escaped :: Char -> Parser Char
-escaped quote = regular <|> unescaped
-  where
-    unescape '\\' = '\\'
-    unescape '0' = '\0'
-    unescape 'n' = '\n'
-    unescape 'r' = '\r'
-    unescape 'v' = '\v'
-    unescape 't' = '\t'
-    unescape 'b' = '\b'
-    unescape 'f' = '\f'
-    unescape a = a
-
-    unescaped = char '\\' *> oneOf (quote : "\\0nrvtbf") <&> unescape
-    regular = noneOf $ quote : "\\\0\n\r\v\t\b\f"
-
-charRaw :: Parser Char
-charRaw = parens '\'' '\'' $ escaped '\''
-
-strRaw :: Parser Text
-strRaw = parens '"' '"' $ T.pack <$> many (escaped '"')
-
-int :: Parser (Node a)
-int = NumLit <$> intRaw
-
-char' :: Parser (Node a)
-char' = CharLit <$> charRaw
-
-explode :: (a -> Node k) -> [a] -> Node k
-explode _ [] = CtorLit "Nil" []
-explode f (c : cs) = CtorLit "::" [f c, explode f cs]
-
-str :: Parser (Node a)
-str = StrLit <$> strRaw
-
-simpleLit :: Parser (Node a)
-simpleLit = try str <|> try char' <|> int
+parens :: Parser a -> Parser a
+parens = btwn "(" ")"
 
 reservedNames :: [String]
 reservedNames = ["case", "of", "let", "and", "in"]
@@ -123,22 +52,22 @@ reservedOps :: [String]
 reservedOps = ["=", "\\", "->", "|", ":"]
 
 identRaw :: Parser String
-identRaw = notReserved =<< (:) <$> fstChar <*> many sndChar
+identRaw = notReserved =<< lexeme ((:) <$> fstChar <*> many sndChar) <?> "Identifier"
   where
-    fstChar = letter
-    sndChar = choice [letter, digit, char '\'']
+    fstChar = letterChar
+    sndChar = alphaNumChar <|> char '\''
 
     notReserved i
-      | i `elem` reservedNames = fail "Reserved name"
+      | i `elem` reservedNames = fail $ "Reserved name " <> show i
       | otherwise = pure i
 
 opRaw :: Parser String
-opRaw = notReserved =<< many1 opChar
+opRaw = notReserved =<< lexeme (some opChar) <?> "Operator"
   where
-    opChar = oneOf "!#$%&*+./<=>?@\\^|-~:;_"
+    opChar = oneOf @[] "!#$%&*+./<=>?@\\^|-~:;_"
 
     notReserved i
-      | i `elem` reservedOps = fail "Reserved operator"
+      | i `elem` reservedOps = fail $ "Reserved operator " <> show i
       | otherwise = pure i
 
 varName :: Parser Text
@@ -162,34 +91,78 @@ ctorOp = opRaw >>= \case
   i -> pure $ T.pack i
 
 varIdent :: Parser Text
-varIdent = try varName <|> parens '(' ')' varOp
+varIdent = try varName <|> parens varOp
 
 ctorIdent :: Parser Text
-ctorIdent = try ctorName <|> parens '(' ')' ctorOp
+ctorIdent = try ctorName <|> parens ctorOp
 
 varInfix :: Parser Text
-varInfix = try varOp <|> parens '`' '`' varName
+varInfix = try varOp <|> btwn "`" "`" varName
 
 ctorInfix :: Parser Text
-ctorInfix = try ctorOp <|> parens '`' '`' ctorName
+ctorInfix = try ctorOp <|> btwn "`" "`" ctorName
 
-var :: Parser (Node a)
+tuple :: Parser (Node k) -> Parser (Node k)
+tuple term = parens $ mkTup <$> (term `sepBy` symbol ",")
+  where
+    mkTup [a] = a
+    mkTup l = CtorLit "Tuple" $ V.fromList l
+
+recField :: Parser (Node k) -> Parser (Ident, Node k)
+recField p = mkField <$> varIdent <*> optional (try $ symbol "=" *> p) -- TODO: try may not be needed
+  where
+    mkField i Nothing = (i, Var i)
+    mkField i (Just n) = (i, n)
+
+record :: Parser (Ident, Node k) -> Parser (Node k)
+record term = btwn "{" "}" (term `sepBy` symbol ",") >>= unique <&> RecLit
+  where
+    unique es =
+      let es' = fst <$> es
+      in
+        if nubOrd es' == es'
+        then pure $ M.fromList es
+        else fail "Fields in a record must be unique"
+
+recLit :: Parser (Node k) -> Parser (Node k)
+recLit = record . recField
+
+list :: ([a] -> b) -> Parser a -> Parser b
+list f p = f <$> btwn "[" "]" (p `sepBy` symbol ",")
+
+explode :: (a -> Node k) -> [a] -> Node k
+explode _ [] = CtorLit "Nil" []
+explode f (c : cs) = CtorLit "::" [f c, explode f cs]
+
+listLit :: Parser (Node k) -> Parser (Node k)
+listLit = list $ explode id
+
+intRaw :: Parser Integer
+intRaw = L.signed (pure ()) $ lexeme L.decimal
+
+charRaw :: Parser Char
+charRaw = lexeme $ between (char '\'') (char '\'') L.charLiteral
+
+strRaw :: Parser Text
+strRaw = lexeme $ char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack
+
+intLit :: Parser (Node k)
+intLit = NumLit <$> intRaw
+
+charLit :: Parser (Node k)
+charLit = CharLit <$> charRaw
+
+strLit :: Parser (Node k)
+strLit = StrLit <$> strRaw
+
+simpleLit :: Parser (Node k)
+simpleLit = try intLit <|> charLit <|> strLit
+
+var :: Parser (Node k)
 var = Var <$> varIdent
 
-ctorSimple :: Parser (Node a)
+ctorSimple :: Parser (Node k)
 ctorSimple = (`CtorLit` []) <$> ctorIdent
-
-tupLit :: Parser (Node a) -> Parser (Node a)
-tupLit = tuple (CtorLit "Tuple")
-
-recLitExpr :: Parser Expr
-recLitExpr = recLit expr \m b ->
-  if b
-  then fail "Record wildcards can only appear in patterns"
-  else pure $ RecLit m
-
-recLitPat :: Parser Pat
-recLitPat = recLit pat \m b -> pure $ (if b then RecWildcard else RecLit) m
 
 mkLam :: [Pat] -> Expr -> Expr
 mkLam = flip $ foldr \p e ->
@@ -198,92 +171,97 @@ mkLam = flip $ foldr \p e ->
     _ -> LamCase [(p, e)]
 
 caseBranch :: Parser (Pat, Expr)
-caseBranch = char '|' *> ws *> ((,) <$> (pat <* ws <* string "->" <* ws) <*> expr) <* ws
+caseBranch = symbol "|" *> ((,) <$> (pat <* symbol "->" ) <*> expr)
 
 lamCase :: Parser Expr
-lamCase = string "case" *> ws *> many (caseBranch <* ws) <&> LamCase . V.fromList
+lamCase = symbol "case" *> many caseBranch <&> LamCase . V.fromList
 
 lamVars :: Parser Expr
-lamVars = mkLam <$> (many1 (patSimple <* ws) <* char '.' <* ws) <*> expr
+lamVars = mkLam <$> (some patSimple <* symbol ".") <*> expr
 
 lam :: Parser Expr
-lam = char '\\' *> ws *> (try lamCase <|> lamVars)
+lam = symbol "\\" *> (try lamCase <|> lamVars)
 
 binding :: Parser (Ident, Expr)
-binding = (,) <$> (varIdent <* ws) <*> (mkLam <$> many (patSimple <* ws) <*> (equals *> expr <* ws))
+binding = (,) <$> varIdent <*> (mkLam <$> many patSimple <*> (symbol "=" *> expr))
 
 bindingGroup :: Parser BindingGroup
-bindingGroup = try binding `sepBy1` try (string "and" *> ws) >>= ensureUnique
+bindingGroup = try binding `sepBy1` symbol "and" >>= ensureUnique
   where
     ensureUnique bs =
       let is = fst <$> bs
       in
-        if is == nub is
+        if is == nubOrd is
         then pure $ M.fromList bs
         else fail "Duplicate definition in binding group"
 
 let' :: Parser Expr
 let' =
   Let
-  <$> try (string "let" *> ws *> bindingGroup)
-  <*> (string "in" *> ws *> expr)
+  <$> try (symbol "let" *> bindingGroup)
+  <*> (symbol "in" *> expr)
 
 case' :: Parser Expr
-case' = Case <$> (string "case" *> ws *> expr <* ws <* string "of" <* ws) <*> (V.fromList <$> many caseBranch)
+case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> (V.fromList <$> many caseBranch)
 
 exprSimple :: Parser Expr
-exprSimple = choice (try <$> [let', lam, case', recLitExpr, listLit expr, tupLit expr, simpleLit, ctorSimple, var]) <* ws
+exprSimple = choice @[] $ try <$> [let', lam, case', recLit expr, listLit expr, tuple expr, simpleLit, ctorSimple, var]
 
 wildcard :: Parser Pat
-wildcard = char '_' $> Wildcard
+wildcard = symbol "_" $> Wildcard
 
 ofType :: Parser Pat
-ofType = OfType <$> (varIdent <* colon) <*> pat
+ofType = OfType <$> (varIdent <* symbol ":") <*> pat
 
 asPat :: Parser Pat
-asPat = As <$> (varIdent <* char '@') <*> patSimple
+asPat = As <$> (varIdent <* symbol "@") <*> patSimple
 
 patSimple :: Parser Pat
-patSimple = choice (try <$> [asPat, ofType, wildcard, recLitPat, listLit pat, tupLit pat, simpleLit, ctorSimple, var]) <* ws
+patSimple = choice @[] $ try <$> [asPat, ofType, wildcard, recLit pat, listLit pat, tuple pat, simpleLit, ctorSimple, var]
 
 patCtorApp :: Parser Pat
-patCtorApp = try (CtorLit <$> (ctorIdent <* ws) <*> (V.fromList <$> many (patSimple <* ws))) <|> patSimple
+patCtorApp = try (CtorLit <$> ctorIdent <*> (V.fromList <$> many patSimple)) <|> patSimple
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 term op = apply <$> term <*> many ((,) <$> op <*> term)
+  where
+    apply = foldl' (\a (f, b) -> f a b)
+
+appCtor :: Ident -> Node k -> Node k -> Node k
+appCtor c a b = CtorLit c [a, b]
 
 patCtorOps :: Parser Pat
-patCtorOps = chainl1 patCtorApp $ try $ appCtor <$> (ctorInfix <* ws)
+patCtorOps = chainl1 patCtorApp $ try $ appCtor <$> ctorInfix
 
 pat :: Parser Pat
 pat = patCtorOps
 
 member :: Parser Expr
-member = foldl' RecMember <$> exprSimple <*> try (many1 (char '.' *> varIdent))
+member = foldl' RecMember <$> exprSimple <*> try (some (char '.' *> varIdent))
 
 exprMember :: Parser Expr
 exprMember = try member <|> exprSimple
 
 appHead :: Parser (Vector Expr -> Expr)
-appHead = (try (CtorLit <$> ctorIdent) <|> foldl' App <$> exprMember) <* ws
+appHead = try (CtorLit <$> ctorIdent) <|> foldl' App <$> exprMember
 
 exprApp :: Parser Expr
-exprApp = appHead <*> (V.fromList <$> many (exprMember <* ws))
-
-appCtor :: Ident -> Node a -> Node a -> Node a
-appCtor c a b = CtorLit c [a, b]
+exprApp = appHead <*> (V.fromList <$> many exprMember)
 
 exprCtorOps :: Parser Expr
-exprCtorOps = chainl1 exprApp $ try $ appCtor <$> (ctorInfix <* ws)
+exprCtorOps = chainl1 exprApp $ try $ appCtor <$> ctorInfix
 
 appVar :: Ident -> Expr -> Expr -> Expr
 appVar v = App . App (Var v)
 
 exprVarOps :: Parser Expr
-exprVarOps = chainl1 exprCtorOps $ appVar <$> (varInfix <* ws)
+exprVarOps = chainl1 exprCtorOps $ appVar <$> varInfix
 
 expr :: Parser Expr
 expr = exprVarOps
 
 program :: Parser BindingGroup
-program = option () shebang *> ws *> bindingGroup <* eof
+program = optional shebang *> optional sc *> bindingGroup <* eof
 
 parse :: MonadError Text m => Text -> m BindingGroup
-parse = liftEither . first showT . runParser program () ""
+parse = liftEither . first (T.pack . errorBundlePretty) . runParser program ""

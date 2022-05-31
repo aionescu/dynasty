@@ -34,7 +34,6 @@ executable dynasty
     , megaparsec ^>= 9.2
     , mtl ^>= 2.3
     , optparse-applicative ^>= 0.17
-    , parsec ^>= 3.1.15
     , text ^>= 2
     , vector ^>= 0.12.3
 

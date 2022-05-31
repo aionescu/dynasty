@@ -42,7 +42,7 @@ wrap = \case
   | n -> n
 and
 
-evalOp op tape@{ .. } =
+evalOp op tape@{left,crr,right} =
   case op of
   | Incr -> pure { left, crr = wrap (crr + 1), right }
   | Decr -> pure { left, crr = wrap (crr - 1), right }

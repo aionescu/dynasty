@@ -3,7 +3,6 @@
 module Language.Dynasty.Runtime.Val where
 
 import Data.Char(isLetter)
-import Data.Foldable(toList)
 import Data.Map.Lazy(Map)
 import Data.Map.Lazy qualified as M
 import Data.Text(Text)
@@ -11,9 +10,7 @@ import Data.Text qualified as T
 import Data.Typeable(Typeable)
 import Data.Vector(Vector)
 import Data.Vector qualified as V
-import Text.Parsec
 
-import Language.Dynasty.Frontend.Parser hiding (parse)
 import Language.Dynasty.Frontend.Syntax
 import Utils
 
@@ -86,55 +83,3 @@ instance Eq Val where
   Ctor a as == Ctor b bs = a == b && as == bs
   Rec as == Rec bs = as == bs
   _ == _ = False
-
-numVal :: Parser Val
-numVal = Num <$> intRaw
-
-charVal :: Parser Val
-charVal = Char <$> charRaw
-
-strVal :: Parser Val
-strVal = Str <$> strRaw
-
-tupVal :: Parser Val
-tupVal = tuple (Ctor "Tuple") val
-
-buildList :: [Val] -> Val
-buildList [] = Ctor "Nil" []
-buildList (v : vs) = Ctor "::" [v, buildList vs]
-
-listVal :: Parser Val
-listVal = list buildList val
-
-fieldVal :: Parser (Ident, Val)
-fieldVal = (,) <$> (varIdent <* equals) <*> val
-
-recVal :: Parser Val
-recVal = record fieldVal \m b ->
-  if b
-  then fail "Record wildcards can only appear in patterns"
-  else pure $ Rec m
-
-ctorValSimple :: Parser Val
-ctorValSimple = (`Ctor` []) <$> ctorIdent
-
-valSimple :: Parser Val
-valSimple = choice (try <$> [recVal, listVal, tupVal, strVal, charVal, numVal, ctorValSimple]) <* ws
-
-valCtorApp :: Parser Val
-valCtorApp = try (Ctor <$> (ctorIdent <* ws) <*> (V.fromList <$> many (valSimple <* ws))) <|> valSimple
-
-appCtorVal :: Ident -> Val -> Val -> Val
-appCtorVal c a b = Ctor c [a, b]
-
-valCtorOps :: Parser Val
-valCtorOps = chainl1 valCtorApp $ try $ appCtorVal <$> (ctorInfix <* ws)
-
-val :: Parser Val
-val = valCtorOps
-
-withRest :: Parser a -> Parser (a, String)
-withRest p = (,) <$> p <*> (T.unpack <$> getInput)
-
-instance Read Val where
-  readsPrec _ = toList . parse (withRest val) "" . T.pack

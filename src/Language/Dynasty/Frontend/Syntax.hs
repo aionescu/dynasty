@@ -2,7 +2,7 @@
 
 module Language.Dynasty.Frontend.Syntax where
 
-import Data.Map.Lazy(Map)
+import Data.Map.Strict(Map)
 import Data.Text(Text)
 import Data.Vector(Vector)
 
@@ -25,7 +25,6 @@ data Node a where
   App :: Expr -> Expr -> Expr
   Let :: BindingGroup -> Expr -> Expr
 
-  RecWildcard :: Map Ident Pat -> Pat
   OfType :: Ident -> Pat -> Pat
   Wildcard :: Pat
   As :: Ident -> Pat -> Pat

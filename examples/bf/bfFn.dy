@@ -14,20 +14,20 @@ and
 head (a :: _) = a and
 tail (_ :: as) = as and
 
-incr tape@{..} = pure { left, crr = wrap (crr + 1), right } and
-decr tape@{..} = pure { left, crr = wrap (crr - 1), right } and
-movL tape@{..} = pure { left = tail left, crr = head left, right = crr :: right } and
-movR tape@{..} = pure { left = crr :: left, crr = head right, right = tail right } and
-read tape@{..} = getChar >>= \c. pure { left, crr = charToNum c, right } and
-write tape@{..} =  putChar (numToChar crr) *> pure tape and
+incr tape@{left,crr,right} = pure { left, crr = wrap (crr + 1), right } and
+decr tape@{left,crr,right} = pure { left, crr = wrap (crr - 1), right } and
+movL tape@{left,crr,right} = pure { left = tail left, crr = head left, right = crr :: right } and
+movR tape@{left,crr,right} = pure { left = crr :: left, crr = head right, right = tail right } and
+read tape@{left,crr,right} = getChar >>= \c. pure { left, crr = charToNum c, right } and
+write tape@{left,crr,right} =  putChar (numToChar crr) *> pure tape and
 
-loop ops tape@{..} =
+loop ops tape@{left,crr,right} =
   case crr of
   | 0 -> pure tape
   | _ -> evalOps ops tape >>= loop ops
 and
 
-evalOps ops tape@{..} =
+evalOps ops tape@{left,crr,right} =
   case ops of
   | [] -> pure tape
   | op :: ops -> op tape >>= evalOps ops

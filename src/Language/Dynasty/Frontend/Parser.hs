@@ -3,11 +3,9 @@ module Language.Dynasty.Frontend.Parser where
 import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Char(isUpper, isLower)
-import Data.Containers.ListUtils(nubOrd)
 import Data.Foldable(foldl')
 import Data.Function(on)
 import Data.Functor((<&>), ($>))
-import Data.Map.Strict qualified as M
 import Data.Text(Text)
 import Data.Text qualified as T
 import Data.Vector(Vector)
@@ -106,36 +104,19 @@ tuple :: Parser (Node k) -> Parser (Node k)
 tuple term = parens $ mkTup <$> (term `sepBy` symbol ",")
   where
     mkTup [a] = a
-    mkTup l = CtorLit "Tuple" $ V.fromList l
+    mkTup l = TupLit $ V.fromList l
 
-recField :: Parser (Node k) -> Parser (Ident, Node k)
-recField p = mkField <$> varIdent <*> optional (try $ symbol "=" *> p) -- TODO: try may not be needed
-  where
-    mkField i Nothing = (i, Var i)
-    mkField i (Just n) = (i, n)
+recField :: Parser (Node k) -> Parser (Ident, Maybe (Node k))
+recField p = (,) <$> varIdent <*> optional (try $ symbol "=" *> p) -- TODO: try may not be needed
 
-record :: Parser (Ident, Node k) -> Parser (Node k)
-record term = btwn "{" "}" (term `sepBy` symbol ",") >>= unique <&> RecLit
-  where
-    unique es =
-      let es' = fst <$> es
-      in
-        if nubOrd es' == es'
-        then pure $ M.fromList es
-        else fail "Fields in a record must be unique"
+record :: Parser (Ident, Maybe (Node k)) -> Parser (Node k)
+record term = RecLit . V.fromList <$> btwn "{" "}" (term `sepBy` symbol ",")
 
 recLit :: Parser (Node k) -> Parser (Node k)
 recLit = record . recField
 
-list :: ([a] -> b) -> Parser a -> Parser b
-list f p = f <$> btwn "[" "]" (p `sepBy` symbol ",")
-
-explode :: (a -> Node k) -> [a] -> Node k
-explode _ [] = CtorLit "Nil" []
-explode f (c : cs) = CtorLit "::" [f c, explode f cs]
-
-listLit :: Parser (Node k) -> Parser (Node k)
-listLit = list $ explode id
+list :: Parser (Node k) -> Parser (Node k)
+list term = ListLit . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",")
 
 intRaw :: Parser Integer
 intRaw = L.signed (pure ()) $ lexeme L.decimal
@@ -164,12 +145,6 @@ var = Var <$> varIdent
 ctorSimple :: Parser (Node k)
 ctorSimple = (`CtorLit` []) <$> ctorIdent
 
-mkLam :: [Pat] -> Expr -> Expr
-mkLam = flip $ foldr \p e ->
-  case p of
-    Var i -> Lam i e
-    _ -> LamCase [(p, e)]
-
 caseBranch :: Parser (Pat, Expr)
 caseBranch = symbol "|" *> ((,) <$> (pat <* symbol "->" ) <*> expr)
 
@@ -177,23 +152,16 @@ lamCase :: Parser Expr
 lamCase = symbol "case" *> many caseBranch <&> LamCase . V.fromList
 
 lamVars :: Parser Expr
-lamVars = mkLam <$> (some patSimple <* symbol ".") <*> expr
+lamVars = Lam . V.fromList <$> (some patSimple <* symbol ".") <*> expr
 
 lam :: Parser Expr
 lam = symbol "\\" *> (try lamCase <|> lamVars)
 
 binding :: Parser (Ident, Expr)
-binding = (,) <$> varIdent <*> (mkLam <$> many patSimple <*> (symbol "=" *> expr))
+binding = (,) <$> varIdent <*> (Lam . V.fromList <$> many patSimple <*> (symbol "=" *> expr))
 
 bindingGroup :: Parser BindingGroup
-bindingGroup = try binding `sepBy1` symbol "and" >>= ensureUnique
-  where
-    ensureUnique bs =
-      let is = fst <$> bs
-      in
-        if is == nubOrd is
-        then pure $ M.fromList bs
-        else fail "Duplicate definition in binding group"
+bindingGroup = V.fromList <$> try binding `sepBy1` symbol "and"
 
 let' :: Parser Expr
 let' =
@@ -205,7 +173,7 @@ case' :: Parser Expr
 case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> (V.fromList <$> many caseBranch)
 
 exprSimple :: Parser Expr
-exprSimple = choice @[] $ try <$> [let', lam, case', recLit expr, listLit expr, tuple expr, simpleLit, ctorSimple, var]
+exprSimple = choice @[] $ try <$> [let', lam, case', recLit expr, list expr, tuple expr, simpleLit, ctorSimple, var]
 
 wildcard :: Parser Pat
 wildcard = symbol "_" $> Wildcard
@@ -217,7 +185,7 @@ asPat :: Parser Pat
 asPat = As <$> (varIdent <* symbol "@") <*> patSimple
 
 patSimple :: Parser Pat
-patSimple = choice @[] $ try <$> [asPat, ofType, wildcard, recLit pat, listLit pat, tuple pat, simpleLit, ctorSimple, var]
+patSimple = choice @[] $ try <$> [asPat, ofType, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var]
 
 patCtorApp :: Parser Pat
 patCtorApp = try (CtorLit <$> ctorIdent <*> (V.fromList <$> many patSimple)) <|> patSimple

@@ -21,9 +21,10 @@ executable dynasty
     Utils
     Language.Dynasty.Frontend.Syntax
     Language.Dynasty.Frontend.Parser
+    Language.Dynasty.Frontend.Validate
+    Language.Dynasty.Frontend.Core
     Language.Dynasty.Runtime.Val
     Language.Dynasty.Runtime.Prelude
-    Language.Dynasty.Runtime.Eval
     Opts
 
   hs-source-dirs: src

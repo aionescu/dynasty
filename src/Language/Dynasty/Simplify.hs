@@ -16,8 +16,9 @@ import Data.Tuple(swap)
 import Data.Vector(Vector)
 import Data.Vector qualified as V
 
-import Language.Dynasty.Core
+import Language.Dynasty.Syntax(Ident)
 import Language.Dynasty.Syntax qualified as S
+import Language.Dynasty.Core
 import Utils
 
 patDig :: S.Pat -> Dig

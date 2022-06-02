@@ -1,72 +1,53 @@
 module Main where
 
 import Data.Function((&))
+import Data.Functor((<&>))
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
-import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
 import Language.Dynasty.Parser(parse)
 import Language.Dynasty.Validate(validate)
 import Language.Dynasty.Simplify(simplify)
+import Language.Dynasty.Codegen(compile)
 import Opts(Opts(..), getOpts)
-import Utils(showT)
-import Data.Bifunctor (second)
+import System.Process (system)
+import System.Exit (exitFailure, exitWith)
+import Control.Monad (when)
 
-prelude :: Set Text
-prelude =
-  S.fromList
-  [ "prelude"
-  , "+"
-  , "-"
-  , "*"
-  , "/"
-  , "%"
-  , "^"
-  , "<$>"
-  , "pure"
-  , "*>"
-  , ">>="
-  , "getLine"
-  , "print"
-  , "putStrLn"
-  , "show"
-  , "=="
-  , "."
-  , "&"
-  , "trace"
-  , "typeOf"
-  , "<"
-  , "readFile"
-  , "getChar"
-  , "putChar"
-  , "getArgs"
-  , "charToNum"
-  , "numToChar"
-  , ";"
-  , "explode"
-  , "implode"
-  ]
+preludeEnv :: Set Text
+preludeEnv = S.fromList ["+", ">>=", "*>", "pure", "print"]
 
-getCode :: Text -> IO Text
+getCode :: FilePath -> IO Text
 getCode "-" = T.getContents
-getCode path = T.readFile $ T.unpack path
+getCode path = T.readFile path
 
-pipeline :: Text -> Either Text Text
-pipeline code =
+pipeline :: Text -> Text -> Either Text Text
+pipeline prelude code =
   code
   & parse
   >>= \syn ->
-    validate @(Either Text) prelude syn
-    & second (\s -> showT s <> "\n\n" <> showT (simplify s))
+    validate @(Either Text) preludeEnv syn
+    <&> simplify
+    <&> compile prelude
+
+runOrWrite :: Opts -> Text -> IO ()
+runOrWrite Opts{..} code = do
+  T.writeFile optsOutPath code
+  when optsRun do
+    system ("node " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
+      >>= exitWith
 
 run :: Opts -> IO ()
-run Opts{..} = do
+run opts@Opts{..} = do
   code <- getCode optsPath
+  prelude <- T.readFile "vendored/prelude.js"
 
-  pipeline code & either T.putStrLn T.putStrLn
+  case pipeline prelude code of
+    Left err -> T.putStrLn err *> exitFailure
+    Right js -> runOrWrite opts js
 
 main :: IO ()
 main = do

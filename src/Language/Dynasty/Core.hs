@@ -5,9 +5,7 @@ module Language.Dynasty.Core where
 import Data.Text(Text)
 import Data.Vector(Vector)
 
-import Language.Dynasty.Syntax(Lit)
-
-type Ident = Text
+import Language.Dynasty.Syntax(Ident, Lit)
 
 -- In Core there are no patterns.
 -- Instead, each branch of a case expression becomes a pair of "checks" and "assignments".

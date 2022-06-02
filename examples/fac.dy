@@ -15,7 +15,7 @@ fix f = let x = f x in x and
 facF = fix fac' and
 
 -- Y combinator
-y f = let l = (\x. f (x x)) in l l and
+y f = let l = \x. f (x x) in l l and
 facY = y fac' and
 
 main =

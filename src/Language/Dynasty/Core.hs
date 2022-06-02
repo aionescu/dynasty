@@ -1,9 +1,11 @@
 {-# LANGUAGE StrictData #-}
 
-module Language.Dynasty.Frontend.Core where
+module Language.Dynasty.Core where
 
 import Data.Text(Text)
 import Data.Vector(Vector)
+
+import Language.Dynasty.Syntax(Lit)
 
 type Ident = Text
 
@@ -12,38 +14,32 @@ type Ident = Text
 
 -- Dig into a value.
 data Dig
-  = DigField Int
-  | DigRecField Ident
-  | DigTypeOf
+  = Field Int Dig
+  | RecField Ident Dig
+  | TypeOf Dig
+  | And Dig Dig
+  | Check Check
+  | Assign Ident
   deriving stock Show
-
-type Digs = Vector Dig
 
 -- Check properties of a value.
 data Check
-  = IsIntLit Integer
-  | IsCharLit Char
-  | IsStrLit Text
+  = IsLit Lit
   | IsCtor Text
   | IsRecord
   | HasFields Int
   | HasRecField Ident
-  deriving stock Show
-
--- Pair of checks and assignments.
-data CaseBranch = CaseBranch (Vector (Digs, Check)) (Vector (Digs, Ident))
+  | NoOp
   deriving stock Show
 
 data Expr
-  = NumLit Integer
-  | CharLit Char
-  | StrLit Text
-  | RecLit (Vector (Ident, Expr))
-  | CtorLit Ident (Vector Expr)
+  = Lit Lit
+  | Record (Vector (Ident, Expr))
+  | Ctor Ident (Vector Expr)
   | Var Ident
-  | RecMember Expr Ident
-  | Case Expr (Vector CaseBranch)
-  | Lam Ident Expr
+  | FieldAccess Expr Ident
+  | Case Ident (Vector (Dig, Expr))
+  | Lambda Ident Expr
   | App Expr Expr
   | Let Ident Expr Expr
   | LetRec (Vector (Ident, Expr)) Expr

@@ -1,17 +1,18 @@
-module Language.Dynasty.Frontend.Validate(validate) where
+module Language.Dynasty.Validate(validate) where
 
 import Control.Monad.Except(MonadError, throwError, liftEither)
 import Control.Monad.Reader(MonadReader, asks, local, ReaderT (runReaderT))
 import Control.Monad.State.Strict(MonadState, gets, modify, execStateT)
 import Data.Foldable(traverse_, fold)
 import Data.Function((&))
+import Data.Functor(($>))
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
 import Data.Vector(Vector)
 import Data.Vector qualified as V
 
-import Language.Dynasty.Frontend.Syntax
+import Language.Dynasty.Syntax
 import Utils
 
 -- This module validates the Syntax before it is simplified into Core.
@@ -32,18 +33,16 @@ addVar v = gets (S.member v) >>= \case
   False -> modify (S.insert v)
 
 validatePat :: (MonadError Text m, MonadState Env m) => Pat -> m ()
-validatePat NumLit{} = pure ()
-validatePat CharLit{} = pure ()
-validatePat StrLit{} = pure ()
-validatePat (TupLit es) = traverse_ validatePat es
-validatePat (ListLit es) = traverse_ validatePat es
+validatePat Lit{} = pure ()
+validatePat (Tuple es) = traverse_ validatePat es
+validatePat (List es) = traverse_ validatePat es
 
-validatePat (RecLit es)
+validatePat (Record es)
   | not $ uniqueIdents es = throwError "Duplicate field in record pattern"
   | otherwise = traverse_ addVar $ V.map fst es
 
-validatePat (CtorLit _ es) = traverse_ validatePat es
 validatePat (Var v) = addVar v
+validatePat (App (Ctor _) es) = traverse_ validatePat es
 validatePat Wildcard = pure ()
 validatePat (OfType v t) = addVar v *> validatePat t
 validatePat (As v p) = addVar v *> validatePat p
@@ -63,14 +62,11 @@ withVars :: (MonadError Text m, MonadReader Env m) => Env -> m a -> m a
 withVars vs = local (<> vs)
 
 validateExpr :: (MonadError Text m, MonadReader Env m) => Expr -> m ()
-validateExpr NumLit{} = pure ()
-validateExpr CharLit{} = pure ()
-validateExpr StrLit{} = pure ()
-validateExpr (TupLit es) = traverse_ validateExpr es
-validateExpr (ListLit es) = traverse_ validateExpr es
-validateExpr (CtorLit _ es) = traverse_ validateExpr es
+validateExpr Lit{} = pure ()
+validateExpr (Tuple es) = traverse_ validateExpr es
+validateExpr (List es) = traverse_ validateExpr es
 
-validateExpr (RecLit es)
+validateExpr (Record es)
   | not $ uniqueIdents es = throwError "Duplicate field in record expression"
   | otherwise = traverse_ validateExpr (V.catMaybes $ V.map snd es)
 
@@ -78,11 +74,12 @@ validateExpr (Var v) = asks (S.member v) >>= \case
   False -> throwError $ "Undefined variable " <> showT v
   True -> pure ()
 
-validateExpr (RecMember e _) = validateExpr e
+validateExpr (FieldAccess e _) = validateExpr e
 validateExpr (Case s bs) = validateExpr s *> traverse_ (uncurry validateBranch) bs
-validateExpr (Lam vs e) = traverse patVars vs >>= \vars -> withVars (fold vars) $ validateExpr e
-validateExpr (LamCase bs) = traverse_ (uncurry validateBranch) bs
-validateExpr (App f a) = validateExpr f *> validateExpr a
+validateExpr (Lambda vs e) = traverse patVars vs >>= \vars -> withVars (fold vars) $ validateExpr e
+validateExpr (LambdaCase bs) = traverse_ (uncurry validateBranch) bs
+validateExpr (App (Ctor _) es) = traverse_ validateExpr es
+validateExpr (App (Fn f) es) = validateExpr f *> traverse_ validateExpr es
 
 validateExpr (Let bs e)
   | not $ uniqueIdents bs = throwError "Duplicate binding in let expression"
@@ -90,7 +87,7 @@ validateExpr (Let bs e)
       withVars (S.fromList $ V.toList $ V.map fst bs) $
         traverse_ validateExpr (V.map snd bs) *> validateExpr e
 
-validate :: MonadError Text m => Env -> BindingGroup -> m ()
+validate :: MonadError Text m => Env -> BindingGroup -> m BindingGroup
 validate prelude bs =
-  validateExpr (Let bs $ Var "main")
+  validateExpr (Let bs $ Var "main") $> bs
   & flip runReaderT prelude

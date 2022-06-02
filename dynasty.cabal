@@ -19,22 +19,24 @@ executable dynasty
 
   other-modules:
     Utils
-    Language.Dynasty.Frontend.Syntax
-    Language.Dynasty.Frontend.Parser
-    Language.Dynasty.Frontend.Validate
-    Language.Dynasty.Frontend.Core
-    Language.Dynasty.Runtime.Val
-    Language.Dynasty.Runtime.Prelude
+    Language.Dynasty.Syntax
+    Language.Dynasty.Parser
+    Language.Dynasty.Validate
+    Language.Dynasty.Core
+    Language.Dynasty.Simplify
+    Language.Dynasty.Codegen
     Opts
 
   hs-source-dirs: src
 
   build-depends:
-    base >=4.14 && <5
+    array ^>= 0.5.4
+    , base >=4.14 && <5
     , containers ^>= 0.6.4
     , megaparsec ^>= 9.2
     , mtl ^>= 2.3
     , optparse-applicative ^>= 0.17
+    , parser-combinators ^>= 1.3
     , text ^>= 2
     , vector ^>= 0.12.3
 
@@ -44,6 +46,7 @@ executable dynasty
     -with-rtsopts=-N
     -Wall
     -Wcompat
+    -Wno-star-is-type
     -Wincomplete-uni-patterns
     -Wprepositive-qualified-module
     -Wmissing-deriving-strategies

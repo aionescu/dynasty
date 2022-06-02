@@ -18,7 +18,7 @@ import System.Exit (exitFailure, exitWith)
 import Control.Monad (when)
 
 preludeEnv :: Set Text
-preludeEnv = S.fromList ["+", ">>=", "*>", "pure", "print"]
+preludeEnv = S.fromList ["+", "*", "-", ">>=", "*>", "pure", "print"]
 
 getCode :: FilePath -> IO Text
 getCode "-" = T.getContents
@@ -37,7 +37,7 @@ runOrWrite :: Opts -> Text -> IO ()
 runOrWrite Opts{..} code = do
   T.writeFile optsOutPath code
   when optsRun do
-    system ("node " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
+    system ("node --trace-uncaught " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
       >>= exitWith
 
 run :: Opts -> IO ()

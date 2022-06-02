@@ -1,4 +1,4 @@
-module Language.Dynasty.Parser(parse) where
+module Language.Dynasty.Parser(parse, varOpChars) where
 
 import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
@@ -74,7 +74,7 @@ operator fstChar = try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> man
       | otherwise = pure i
 
 varName :: Parser Text
-varName = ident letterChar
+varName = ident lowerChar
 
 ctorName :: Parser Text
 ctorName = ident upperChar

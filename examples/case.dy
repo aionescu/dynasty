@@ -1,0 +1,12 @@
+f = \case
+  | 0 -> "case 1"
+  | (a, 2) -> ("case 2", a)
+  | { x } -> ("case 3", x)
+  | Some ([2, x]) -> ("case 4", x)
+and
+
+main =
+  print (f 0) *>
+  print (f (1, 2)) *>
+  print (f { x = 10 }) *>
+  print (f (Some [2, 20]))

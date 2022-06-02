@@ -1,17 +1,16 @@
 module Language.Dynasty.Simplify(simplify) where
 
-import Control.Monad.Reader(MonadReader, asks, local, runReader)
 import Data.Array qualified as A
-import Data.Bifunctor(second)
-import Data.Foldable(foldrM)
+import Data.Bifunctor(bimap, second)
+import Data.Foldable(foldl')
 import Data.Function((&))
+import Data.Functor((<&>))
 import Data.Graph(Tree(..))
 import Data.Graph qualified as G
 import Data.Map.Strict(Map)
 import Data.Map.Strict qualified as M
 import Data.Set(Set)
 import Data.Set qualified as S'
-import Data.Traversable(for)
 import Data.Tuple(swap)
 import Data.Vector(Vector)
 import Data.Vector qualified as V
@@ -19,14 +18,13 @@ import Data.Vector qualified as V
 import Language.Dynasty.Syntax(Ident)
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Core
-import Utils
 
 patDig :: S.Pat -> Dig
 patDig (S.Lit l) = Check $ IsLit l
 patDig (S.Tuple ps) = patDig $ S.App (S.Ctor "Tuple") ps
 
 patDig (S.List ps) = patDig $
-  V.foldr (\h t -> S.App (S.Ctor "Cons") [h, t]) (S.App (S.Ctor "Nil") []) ps
+  V.foldr (\h t -> S.App (S.Ctor "::") [h, t]) (S.App (S.Ctor "Nil") []) ps
 
 patDig (S.Record fs) =
   fs
@@ -43,19 +41,13 @@ patDig S.Wildcard = Check NoOp
 patDig (S.OfType v p) = And (TypeOf $ patDig p) $ Assign v
 patDig (S.As v p) = And (patDig p) $ Assign v
 
-simplifyCaseBranch :: MonadReader Int m => S.Pat -> S.Expr -> m (Dig, Expr)
-simplifyCaseBranch p e = (patDig p,) <$> simplifyExpr e
-
-withVar :: MonadReader Int m => (Ident -> m a) -> m a
-withVar f = do
-  asks (\i -> "$" <> showT i) >>= local succ . f
-
-simplifyLam :: MonadReader Int m => Vector S.Pat -> S.Expr -> m Expr
+simplifyLam :: Vector S.Pat -> S.Expr -> Expr
 simplifyLam vs e =
   case V.uncons vs of
-    Nothing ->  simplifyExpr e
-    Just (S.Var v, ps) -> Lambda v <$> simplifyLam ps e
-    Just (p, ps) -> withVar \v -> Lambda v <$> simplifyExpr (S.Case (S.Var v) [(p, S.Lambda ps e)])
+    Nothing -> simplifyExpr e
+    Just (S.Wildcard, ps) -> Lambda "_" $ simplifyLam ps e
+    Just (S.Var v, ps) -> Lambda v $ simplifyLam ps e
+    Just (p, ps) -> Lambda "$_" $ simplifyExpr $ S.Case (S.Var "$_") [(p, S.Lambda ps e)]
 
 digVars :: Dig -> Set Ident
 digVars (Field _ d) = digVars d
@@ -78,7 +70,7 @@ freeVars (Let v e e') = freeVars e <> (freeVars e' S'.\\ S'.singleton v)
 freeVars (LetRec bs e) = (freeVars e <> foldMap (freeVars . snd) bs) S'.\\ foldMap (S'.singleton . fst) bs
 
 depGraph :: S.BindingGroup -> Vector (Ident, Set Ident)
-depGraph bs = V.map (second $ S'.intersection vars . freeVars . simplifyExpr') bs
+depGraph bs = V.map (second $ S'.intersection vars . freeVars . simplifyExpr) bs
   where
     vars = foldMap (S'.singleton . fst) bs
 
@@ -101,50 +93,38 @@ getSCCs bs =
   in
     (idents, V.fromList $ getIdents <$> sccs)
 
-simplifyLet :: forall m. MonadReader Int m => Vector (Ident, S.Expr) -> S.Expr -> m Expr
-simplifyLet bs e =
+simplifyLet :: Vector (Ident, S.Expr) -> S.Expr -> Expr
+simplifyLet bs expr =
   let
     (idents, sccs) = getSCCs bs
     convert (r, scc) = (r, V.fromList $ (\i -> bs V.! (idents M.! i)) <$> S'.toList scc)
 
-    mkLet (r, is) e'
-      | r = LetRec <$> is' <*> pure e'
-      | otherwise = Let i <$> simplifyExpr v <*> pure e'
+    mkLet (r, is) e
+      | r = LetRec (second simplifyExpr <$> is) e
+      | otherwise = Let i (simplifyExpr v) e
       where
         (i, v) = V.head is
-        is' = traverse (traverse simplifyExpr) is
   in
-    flip (foldrM mkLet) (convert <$> sccs) =<< simplifyExpr e
+    foldr mkLet (simplifyExpr expr) $ convert <$> sccs
 
-simplifyExpr :: MonadReader Int m => S.Expr -> m Expr
-simplifyExpr (S.Lit l) = pure $ Lit l
-simplifyExpr (S.Tuple es) = Ctor "Tuple" <$> traverse simplifyExpr es
+simplifyExpr :: S.Expr -> Expr
+simplifyExpr (S.Lit l) = Lit l
+simplifyExpr (S.Tuple es) = Ctor "Tuple" $ simplifyExpr <$> es
+simplifyExpr (S.List es) = foldr (\h t -> Ctor "::" [simplifyExpr h, t]) (Ctor "Nil" []) es
 
-simplifyExpr (S.List es) =
-  foldrM
-  (\e t -> (\h -> Ctor "Const" [h, t]) <$> simplifyExpr e)
-  (Ctor "Nil" [])
-  es
+simplifyExpr (S.Record es) = Record $ es <&> \case
+  (i, Nothing) -> (i, Var i)
+  (i, Just e) -> (i, simplifyExpr e)
 
-simplifyExpr (S.Record es) = Record <$> for es \case
-  (i, Nothing) -> pure (i, Var i)
-  (i, Just e) -> (i,) <$> simplifyExpr e
-
-simplifyExpr (S.Var v) = pure $ Var v
-simplifyExpr (S.FieldAccess e f) = (`FieldAccess` f) <$> simplifyExpr e
-
-simplifyExpr (S.Case (S.Var v) bs) = Case v <$> traverse (uncurry simplifyCaseBranch) bs
-simplifyExpr (S.Case e bs) = withVar \v ->
-  (Let v <$> simplifyExpr e) <*> (Case v <$> traverse (uncurry simplifyCaseBranch) bs)
-
+simplifyExpr (S.Var v) = Var v
+simplifyExpr (S.FieldAccess e f) = FieldAccess (simplifyExpr e) f
+simplifyExpr (S.Case (S.Var v) bs) = Case v $ bimap patDig simplifyExpr <$> bs
+simplifyExpr (S.Case e bs) = Let "$_" (simplifyExpr e) $ Case "$_" $ bimap patDig simplifyExpr <$> bs
 simplifyExpr (S.Lambda vs e) = simplifyLam vs e
-simplifyExpr (S.LambdaCase bs) = withVar \v -> Lambda v <$> simplifyExpr (S.Case (S.Var v) bs)
-simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor <$> traverse simplifyExpr es
-simplifyExpr (S.App (S.Fn f) es) = V.foldl' App <$> simplifyExpr f <*> traverse simplifyExpr es
+simplifyExpr (S.LambdaCase bs) = Lambda "$_" $ simplifyExpr $ S.Case (S.Var "$_") bs
+simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor $ simplifyExpr <$> es
+simplifyExpr (S.App (S.Fn f) es) = foldl' App (simplifyExpr f) $ simplifyExpr <$> es
 simplifyExpr (S.Let bs e) = simplifyLet bs e
 
-simplifyExpr' :: S.Expr -> Expr
-simplifyExpr' = flip runReader 0 . simplifyExpr
-
 simplify :: S.BindingGroup -> Expr
-simplify bs = simplifyExpr' $ S.Let bs $ S.Var "main"
+simplify bs = simplifyExpr $ S.Let bs $ S.Var "main"

@@ -33,9 +33,12 @@ pipeline prelude code =
     <&> simplify
     <&> compile prelude
 
-runOrWrite :: Opts -> Text -> IO ()
-runOrWrite Opts{..} code = do
-  T.writeFile optsOutPath code
+writeJS :: Opts -> Text -> IO ()
+writeJS Opts{..} code = do
+  case optsPath of
+    "-" -> T.putStrLn code
+    _ -> T.writeFile optsOutPath code
+
   when optsRun do
     system ("node --trace-uncaught " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
       >>= exitWith
@@ -47,7 +50,7 @@ run opts@Opts{..} = do
 
   case pipeline prelude code of
     Left err -> T.putStrLn err *> exitFailure
-    Right js -> runOrWrite opts js
+    Right js -> writeJS opts js
 
 main :: IO ()
 main = do

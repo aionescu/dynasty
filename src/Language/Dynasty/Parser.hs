@@ -50,7 +50,8 @@ reservedOps :: [Text]
 reservedOps = ["=", "\\", "->", "|", ":"]
 
 ident :: Parser Char -> Parser Text
-ident fstChar = try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many sndChar) <?> "Identifier")
+ident fstChar =
+  try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many sndChar) <?> "Identifier")
   where
     sndChar = alphaNumChar <|> char '\''
 
@@ -65,7 +66,8 @@ opChars :: [Char]
 opChars = ':' : varOpChars
 
 operator :: Parser Char -> Parser Text
-operator fstChar = try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many opChar) <?> "Operator")
+operator fstChar =
+  try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many opChar) <?> "Operator")
   where
     opChar = oneOf opChars
 
@@ -110,25 +112,25 @@ tuple term = parens $ mkTup <$> (try term `sepBy` symbol ",")
     mkTup l = Tuple $ V.fromList l
 
 recField :: Parser (Syn k) -> Parser (Ident, Maybe (Syn k))
-recField p = (,) <$> varIdent <*> optional (try $ symbol "=" *> p) -- TODO: try may not be needed
+recField p = (,) <$> varIdent <*> optional (symbol "=" *> p)
 
 record :: Parser (Ident, Maybe (Syn k)) -> Parser (Syn k)
-record term = Record . V.fromList <$> btwn "{" "}" (term `sepBy` symbol ",")
+record term = Record . V.fromList <$> btwn "{" "}" (term `sepBy` symbol ",") <?> "Record literal"
 
 recLit :: Parser (Syn k) -> Parser (Syn k)
 recLit = record . recField
 
 list :: Parser (Syn k) -> Parser (Syn k)
-list term = List . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",")
+list term = List . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
 
 intRaw :: Parser Integer
-intRaw = L.signed (pure ()) $ lexeme L.decimal
+intRaw = L.signed (pure ()) (lexeme L.decimal) <?> "Integer literal"
 
 charRaw :: Parser Char
-charRaw = lexeme $ between (char '\'') (char '\'') L.charLiteral
+charRaw = lexeme (between (char '\'') (char '\'') L.charLiteral) <?> "Character literal"
 
 strRaw :: Parser Text
-strRaw = lexeme $ char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack
+strRaw = lexeme (char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack) <?> "String literal"
 
 intLit :: Parser (Syn k)
 intLit = Lit . Int <$> intRaw
@@ -178,7 +180,10 @@ case' :: Parser Expr
 case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> (V.fromList <$> many caseBranch)
 
 exprSimple :: Parser Expr
-exprSimple = choice @[] $ try <$> [let', lam, case', recLit expr, list expr, tuple expr, simpleLit, ctorSimple, var]
+exprSimple =
+  choice @[]
+  (try <$> [let', lam, case', recLit expr, list expr, tuple expr, simpleLit, ctorSimple, var])
+  <?> "Expression"
 
 wildcard :: Parser Pat
 wildcard = symbol "_" $> Wildcard
@@ -190,7 +195,10 @@ asPat :: Parser Pat
 asPat = As <$> (varIdent <* symbol "@") <*> patSimple
 
 patSimple :: Parser Pat
-patSimple = choice @[] $ try <$> [asPat, ofType, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var]
+patSimple =
+  choice @[]
+  (try <$> [asPat, ofType, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
+  <?> "Pattern"
 
 ctorHead :: Parser (Vector (Syn a) -> Syn a)
 ctorHead = App . Ctor <$> ctorIdent

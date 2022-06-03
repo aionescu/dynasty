@@ -98,18 +98,18 @@ compileCase s bs = "(" <> foldr branch "()=>{throw 'Incomplete pattern match';}"
   where
     branch (d, e) r = cond <> "?" <> withDecls <> ":" <> r
       where
-        (checks, assignments) = splitDig ("$e(" <> s <> ")") d
-        boolExpr = T.intercalate "&&" $ filter (not . T.null) checks
+        (cs, as) = splitDig ("$e(" <> s <> ")") d
+        boolExpr = T.intercalate "&&" $ filter (not . T.null) cs
 
         cond
           | T.null boolExpr = "true"
           | otherwise = boolExpr
 
         withDecls
-          | [] <- assignments = compileExpr e
+          | [] <- as = compileExpr e
           | otherwise = "(()=>{" <> decls <> "return " <> compileExpr e <> ";})()"
           where
-            decls = foldMap (\(path, i) -> "const " <> ident i <> "={$v:" <> path <> "};") assignments
+            decls = foldMap (\(path, i) -> "const " <> ident i <> "={$v:" <> path <> "};") as
 
 compileExpr :: Expr -> JS
 compileExpr (Lit (Int i)) = showT i

@@ -19,6 +19,14 @@ import Language.Dynasty.Syntax(Ident)
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Core
 
+-- This module converts the `Syntax` AST into `Core`.
+-- The main differences between Syntax and Core are:
+-- * Core differentiates between Let and LetRec.
+-- * The are no patterns in Core. Instead, `Case` stores a `Dig` for each branch, which is a
+--   deconstruction of a pattern into its "checks" and "assignments".
+-- * Lambdas have exactly one identifier argument in Core. Lambdas with pattern arguments and
+--   LambdaCase are simplified into a series of Lambdas and Cases.
+
 patDig :: S.Pat -> Dig
 patDig (S.Lit l) = Check $ IsLit l
 patDig (S.Tuple ps) = patDig $ S.App (S.Ctor "Tuple") ps
@@ -67,7 +75,8 @@ freeVars (Case v bs) = S'.singleton v <> foldMap (\(d, b) -> freeVars b S'.\\ di
 freeVars (Lambda v e) = freeVars e S'.\\ S'.singleton v
 freeVars (App f a) = freeVars f <> freeVars a
 freeVars (Let v e e') = freeVars e <> (freeVars e' S'.\\ S'.singleton v)
-freeVars (LetRec bs e) = (freeVars e <> foldMap (freeVars . snd) bs) S'.\\ foldMap (S'.singleton . fst) bs
+freeVars (LetRec bs e) =
+  (freeVars e <> foldMap (freeVars . snd) bs) S'.\\ foldMap (S'.singleton . fst) bs
 
 depGraph :: S.BindingGroup -> Vector (Ident, Set Ident)
 depGraph bs = V.map (second $ S'.intersection vars . freeVars . simplifyExpr) bs
@@ -119,7 +128,8 @@ simplifyExpr (S.Record es) = Record $ es <&> \case
 simplifyExpr (S.Var v) = Var v
 simplifyExpr (S.FieldAccess e f) = FieldAccess (simplifyExpr e) f
 simplifyExpr (S.Case (S.Var v) bs) = Case v $ bimap patDig simplifyExpr <$> bs
-simplifyExpr (S.Case e bs) = Let "$_" (simplifyExpr e) $ Case "$_" $ bimap patDig simplifyExpr <$> bs
+simplifyExpr (S.Case e bs) =
+  Let "$_" (simplifyExpr e) $ Case "$_" $ bimap patDig simplifyExpr <$> bs
 simplifyExpr (S.Lambda vs e) = simplifyLam vs e
 simplifyExpr (S.LambdaCase bs) = Lambda "$_" $ simplifyExpr $ S.Case (S.Var "$_") bs
 simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor $ simplifyExpr <$> es

@@ -44,7 +44,6 @@ validatePat (Record es)
 validatePat (Var v) = addVar v
 validatePat (App (Ctor _) es) = traverse_ validatePat es
 validatePat Wildcard = pure ()
-validatePat (OfType v t) = addVar v *> validatePat t
 validatePat (As v p) = addVar v *> validatePat p
 
 patVars :: MonadError Text m => Pat -> m Env

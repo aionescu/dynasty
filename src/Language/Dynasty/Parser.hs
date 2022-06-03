@@ -47,7 +47,7 @@ reservedNames :: [Text]
 reservedNames = ["case", "of", "let", "and", "in"]
 
 reservedOps :: [Text]
-reservedOps = ["=", "\\", "->", "|", ":"]
+reservedOps = ["=", "\\", "->", "|"]
 
 ident :: Parser Char -> Parser Text
 ident fstChar =
@@ -188,16 +188,13 @@ exprSimple =
 wildcard :: Parser Pat
 wildcard = symbol "_" $> Wildcard
 
-ofType :: Parser Pat
-ofType = OfType <$> (varIdent <* symbol ":") <*> pat
-
 asPat :: Parser Pat
 asPat = As <$> (varIdent <* symbol "@") <*> patSimple
 
 patSimple :: Parser Pat
 patSimple =
   choice @[]
-  (try <$> [asPat, ofType, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
+  (try <$> [asPat, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
   <?> "Pattern"
 
 ctorHead :: Parser (Vector (Syn a) -> Syn a)

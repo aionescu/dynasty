@@ -18,7 +18,7 @@ import System.Exit (exitFailure, exitWith)
 import Control.Monad (when)
 
 preludeEnv :: Set Text
-preludeEnv = S.fromList ["+", "*", "-", ">>=", "*>", "pure", "print"]
+preludeEnv = S.fromList ["+", "*", "-", ">>=", "*>", "pure", "print", "==", "<"]
 
 getCode :: FilePath -> IO Text
 getCode "-" = T.getContents

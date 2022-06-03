@@ -36,7 +36,6 @@ data Syn :: SynKind -> * where
   Let :: BindingGroup -> Expr -> Expr
 
   Wildcard :: Pat
-  OfType :: Ident -> Pat -> Pat
   As :: Ident -> Pat -> Pat
 
 deriving stock instance Show (Syn a)

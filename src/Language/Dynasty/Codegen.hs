@@ -39,8 +39,9 @@ opCharName = \case
 
 ident :: Ident -> JS
 ident i
-  | T.all (`elem` varOpChars) i = "$" <> T.concatMap opCharName i
-  | otherwise = T.replace "'" "_" i
+  | T.all (`elem` varOpChars) i = "_" <> T.concatMap opCharName i
+  | i == "_" = i
+  | otherwise = "_" <> T.replace "'" "_" i
 
 isWhnf :: Expr -> Bool
 isWhnf Lit{} = True
@@ -53,7 +54,7 @@ thunk :: Expr -> JS
 thunk (Var i) = ident i
 thunk e
   | isWhnf e = "{$v:" <> compileExpr e <> "}"
-  | otherwise = "{$f:()=>" <> compileExpr e <> "}"
+  | otherwise = "{$f:()=>" <> parenthesize e <> "}"
 
 compileLet :: Expr -> JS
 compileLet e' = "(()=>{" <> bindings <> "return " <> compileExpr e <> ";})()"
@@ -68,7 +69,7 @@ compileLetRec :: Vector (Ident, Expr) -> Expr -> JS
 compileLetRec bs e = "(()=>{" <> decls <> assigns <> "return " <> compileExpr e <> ";})()"
   where
     decls = foldMap ((\i -> "const " <> ident i <> "={};") . fst) bs
-    assigns = foldMap (\(i, v) -> ident i <> ".$f=()=>" <> compileExpr v <> ";") bs
+    assigns = foldMap (\(i, v) -> ident i <> ".$f=()=>" <> parenthesize v <> ";") bs
 
 check :: JS -> Check -> JS
 check e (IsLit (Int i)) = e <> "===" <> showT i
@@ -83,7 +84,6 @@ check _ NoOp = ""
 splitDig :: JS -> Dig -> ([JS], [(JS, Ident)])
 splitDig e (Field f d) = splitDig ("$e(" <> e <> ".$" <> showT f <> ")") d
 splitDig e (RecField f d) = splitDig ("$e(" <> e <> "." <> ident f <> ")") d
-splitDig e (TypeOf d) = splitDig ("typeOf(" <> e <> ")") d
 
 splitDig e (And a b) = (c <> c', i <> i')
   where
@@ -98,7 +98,7 @@ compileCase s bs = "(" <> foldr branch "()=>{throw 'Incomplete pattern match';}"
   where
     branch (d, e) r = cond <> "?" <> withDecls <> ":" <> r
       where
-        (cs, as) = splitDig ("$e(" <> s <> ")") d
+        (cs, as) = splitDig ("$e(" <> ident s <> ")") d
         boolExpr = T.intercalate "&&" $ filter (not . T.null) cs
 
         cond
@@ -129,14 +129,15 @@ compileExpr (FieldAccess e i) = compileExpr e <> ident i
 compileExpr (Case i bs) = compileCase i bs
 
 compileExpr (Lambda i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
-  where
-    parenthesize (compileExpr -> js)
-      | T.isPrefixOf "{" js = "(" <> js <> ")"
-      | otherwise = js
 
 compileExpr (App f a) = compileExpr f <> "(" <> thunk a <> ")"
 compileExpr e@Let{} = compileLet e
 compileExpr (LetRec bs e) = compileLetRec bs e
+
+parenthesize :: Expr -> JS
+parenthesize (compileExpr -> js)
+  | T.isPrefixOf "{" js = "(" <> js <> ")"
+  | otherwise = js
 
 compile :: JS -> Expr -> JS
 compile prelude e = prelude <> compileExpr e <> ".$r();"

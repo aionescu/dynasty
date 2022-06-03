@@ -14,7 +14,6 @@ import Language.Dynasty.Syntax(Ident, Lit)
 data Dig
   = Field Int Dig
   | RecField Ident Dig
-  | TypeOf Dig
   | And Dig Dig
   | Check Check
   | Assign Ident

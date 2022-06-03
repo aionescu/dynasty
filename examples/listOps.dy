@@ -1,5 +1,5 @@
 main =
-  let take (n: Num) l =
+  let take n l =
     case (n, l) of
     | (0, _) -> []
     | (_, []) -> []
@@ -15,7 +15,7 @@ main =
     | False -> f
   in
 
-  let (..) (a: Num) (b: Num) =
+  let (..) a b =
     if (a == b)
       [a]
       (if (a < b)
@@ -25,7 +25,7 @@ main =
   print (1 .. 10) *>
   print (10 .. 1) *>
 
-  let map (f: Fn) = \case
+  let map f = \case
     | [] -> []
     | a :: as -> f a :: map f as
   in

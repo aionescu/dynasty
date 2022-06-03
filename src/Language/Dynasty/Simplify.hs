@@ -46,7 +46,6 @@ patDig (S.App (S.Ctor ctor) ps) =
 
 patDig (S.Var v) = Assign v
 patDig S.Wildcard = Check NoOp
-patDig (S.OfType v p) = And (TypeOf $ patDig p) $ Assign v
 patDig (S.As v p) = And (patDig p) $ Assign v
 
 simplifyLam :: Vector S.Pat -> S.Expr -> Expr
@@ -55,12 +54,11 @@ simplifyLam vs e =
     Nothing -> simplifyExpr e
     Just (S.Wildcard, ps) -> Lambda "_" $ simplifyLam ps e
     Just (S.Var v, ps) -> Lambda v $ simplifyLam ps e
-    Just (p, ps) -> Lambda "$_" $ simplifyExpr $ S.Case (S.Var "$_") [(p, S.Lambda ps e)]
+    Just (p, ps) -> Lambda "_" $ simplifyExpr $ S.Case (S.Var "_") [(p, S.Lambda ps e)]
 
 digVars :: Dig -> Set Ident
 digVars (Field _ d) = digVars d
 digVars (RecField _ d) = digVars d
-digVars (TypeOf d) = digVars d
 digVars (And a b) = digVars a <> digVars b
 digVars Check{} = S'.empty
 digVars (Assign v) = S'.singleton v
@@ -129,9 +127,9 @@ simplifyExpr (S.Var v) = Var v
 simplifyExpr (S.FieldAccess e f) = FieldAccess (simplifyExpr e) f
 simplifyExpr (S.Case (S.Var v) bs) = Case v $ bimap patDig simplifyExpr <$> bs
 simplifyExpr (S.Case e bs) =
-  Let "$_" (simplifyExpr e) $ Case "$_" $ bimap patDig simplifyExpr <$> bs
+  Let "_" (simplifyExpr e) $ Case "_" $ bimap patDig simplifyExpr <$> bs
 simplifyExpr (S.Lambda vs e) = simplifyLam vs e
-simplifyExpr (S.LambdaCase bs) = Lambda "$_" $ simplifyExpr $ S.Case (S.Var "$_") bs
+simplifyExpr (S.LambdaCase bs) = Lambda "_" $ simplifyExpr $ S.Case (S.Var "_") bs
 simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor $ simplifyExpr <$> es
 simplifyExpr (S.App (S.Fn f) es) = foldl' App (simplifyExpr f) $ simplifyExpr <$> es
 simplifyExpr (S.Let bs e) = simplifyLet bs e

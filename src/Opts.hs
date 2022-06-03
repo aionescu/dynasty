@@ -16,7 +16,7 @@ optsParser :: Parser Opts
 optsParser =
   Opts
   <$> switch (long "run" <> help "Immediately run the resulting JS file.")
-  <*> option auto (short 'o' <> long "out-path" <> metavar "OUT_PATH" <> value "" <> help "The name of the output file.")
+  <*> strOption (short 'o' <> long "out-path" <> metavar "OUT_PATH" <> value "" <> help "The name of the output file.")
   <*> strArgument (metavar "PATH" <> help "The source file to interpret.")
   <*> many (strArgument $ metavar "ARGS" <> help "Arguments to pass to the Dynasty program.")
 

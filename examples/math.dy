@@ -1,0 +1,20 @@
+($) f a = f a and
+
+not = \case
+  | False -> True
+  | True -> False
+and
+
+isNaN = \case
+  | NaN -> True
+  | _ -> False
+and
+
+main =
+  print (2 + 3 == 5) *>
+  print (2 * 3 == 6) *>
+  print (isNaN $ 2 + NaN) *>
+  print (not $ NaN == NaN) *>
+  print (Infinity * -1 == -Infinity) *>
+  print (1 / 0 == Infinity) *>
+  print (-1 / 0 == -Infinity)

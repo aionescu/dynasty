@@ -1,11 +1,14 @@
 const $bh=()=>{throw "Black hole"};
-const $e=t=>{if(t.$f){const f=t.$f;t.$f=$bh;t.$v=f();t.$f=undefined;};return t.$v;};
+const $e=t=>{if(t.$f){const f=t.$f;t.$f=$bh;t.$v=f();t.$f=undefined;}return t.$v;};
 const _pure={$v:a=>({$r:()=>$e(a)})};
 const _GtGtEq={$v:a=>f=>({$r:()=>$e(f)({$v:$e(a).$r()}).$r()})};
 const _StarGt={$v:a=>b=>$e(_GtGtEq)(a)({$v:_=>$e(b)})};
 const _Plus={$v:a=>b=>$e(a)+$e(b)};
-const _Star={$v:a=>b=>$e(a)*$e(b)};
 const _Minus={$v:a=>b=>$e(a)-$e(b)};
+const _Star={$v:a=>b=>$e(a)*$e(b)};
+const _Slash={$v:a=>b=>$e(a)/$e(b)};
+const _Percent={$v:a=>b=>$e(a)%$e(b)};
 const _EqEq={$v:a=>b=>({$:$e(a)===$e(b)?"True":"False"})};
 const _Lt={$v:a=>b=>({$:$e(a)<$e(b)?"True":"False"})};
+const _Dot={$v:f=>g=>x=>$e(f)({$f:()=>$e(g)(x)})};
 const _print={$v:a=>({$r:()=>{console.log($e(a));return{$:"Tuple"};}})};

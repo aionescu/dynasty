@@ -1,12 +1,18 @@
 f = \case
-  | 0 -> "case 1"
-  | (a, 2) -> ("case 2", a)
-  | { x } -> ("case 3", x)
-  | Some ([2, x]) -> ("case 4", x)
+  | 0 -> ("is 0", ())
+  | (a, 2) -> ("is tuple", a)
+  | { x } as y -> ("is record", x, y)
+  | Some ([2, x]) -> ("is Some", x)
+  | NaN as v' -> ("is NaN", { v' })
+  | Infinity -> ("is Infinity", { })
+  | -Infinity -> { is = "-Infinity" }
 and
 
 main =
   print (f 0) *>
   print (f (1, 2)) *>
   print (f { x = 10 }) *>
-  print (f (Some [2, 20]))
+  print (f (Some [2, 20])) *>
+  print (f NaN) *>
+  print (f Infinity) *>
+  print (f -Infinity)

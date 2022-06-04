@@ -33,7 +33,8 @@ addVar v = gets (S.member v) >>= \case
   False -> modify (S.insert v)
 
 validatePat :: (MonadError Text m, MonadState Env m) => Pat -> m ()
-validatePat Lit{} = pure ()
+validatePat NumLit{} = pure ()
+validatePat StrLit{} = pure ()
 validatePat (Tuple es) = traverse_ validatePat es
 validatePat (List es) = traverse_ validatePat es
 
@@ -44,7 +45,7 @@ validatePat (Record es)
 validatePat (Var v) = addVar v
 validatePat (App (Ctor _) es) = traverse_ validatePat es
 validatePat Wildcard = pure ()
-validatePat (As v p) = addVar v *> validatePat p
+validatePat (As p v) = validatePat p *> addVar v
 
 patVars :: MonadError Text m => Pat -> m Env
 patVars p = liftEither $ execStateT (validatePat p) S.empty
@@ -61,7 +62,8 @@ withVars :: (MonadError Text m, MonadReader Env m) => Env -> m a -> m a
 withVars vs = local (<> vs)
 
 validateExpr :: (MonadError Text m, MonadReader Env m) => Expr -> m ()
-validateExpr Lit{} = pure ()
+validateExpr NumLit{} = pure ()
+validateExpr StrLit{} = pure ()
 validateExpr (Tuple es) = traverse_ validateExpr es
 validateExpr (List es) = traverse_ validateExpr es
 

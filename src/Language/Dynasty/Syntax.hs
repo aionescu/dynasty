@@ -2,19 +2,21 @@
 
 module Language.Dynasty.Syntax where
 
+import Data.Scientific(Scientific)
 import Data.Text(Text)
 import Data.Vector(Vector)
 
 type Ident = Text
 
-data Lit
-  = Int Integer
-  | Char Char
-  | Str Text
-  deriving stock Show
-
 -- E for expressions, P for patterns
 data SynKind = E | P
+
+data Num'
+  = NaN
+  | Inf
+  | NegInf
+  | Num Scientific
+  deriving stock Show
 
 data AppHead :: SynKind -> * where
   Ctor :: Ident -> AppHead a
@@ -23,7 +25,8 @@ data AppHead :: SynKind -> * where
 deriving stock instance Show (AppHead a)
 
 data Syn :: SynKind -> * where
-  Lit :: Lit -> Syn a
+  NumLit :: Num' -> Syn a
+  StrLit :: Text -> Syn a
   Tuple :: Vector (Syn a) -> Syn a
   List :: Vector (Syn a) -> Syn a
   Record :: Vector (Ident, Maybe (Syn a)) -> Syn a
@@ -36,7 +39,7 @@ data Syn :: SynKind -> * where
   Let :: BindingGroup -> Expr -> Expr
 
   Wildcard :: Pat
-  As :: Ident -> Pat -> Pat
+  As :: Pat -> Ident -> Pat
 
 deriving stock instance Show (Syn a)
 

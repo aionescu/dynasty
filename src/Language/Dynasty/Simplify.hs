@@ -28,7 +28,8 @@ import Language.Dynasty.Core
 --   LambdaCase are simplified into a series of Lambdas and Cases.
 
 patDig :: S.Pat -> Dig
-patDig (S.Lit l) = Check $ IsLit l
+patDig (S.NumLit n) = Check $ IsNum n
+patDig (S.StrLit s) = Check $ IsStr s
 patDig (S.Tuple ps) = patDig $ S.App (S.Ctor "Tuple") ps
 
 patDig (S.List ps) = patDig $
@@ -46,7 +47,7 @@ patDig (S.App (S.Ctor ctor) ps) =
 
 patDig (S.Var v) = Assign v
 patDig S.Wildcard = Check NoOp
-patDig (S.As v p) = And (patDig p) $ Assign v
+patDig (S.As p v) = And (patDig p) $ Assign v
 
 simplifyLam :: Vector S.Pat -> S.Expr -> Expr
 simplifyLam vs e =
@@ -64,7 +65,8 @@ digVars Check{} = S'.empty
 digVars (Assign v) = S'.singleton v
 
 freeVars :: Expr -> Set Ident
-freeVars Lit{} = S'.empty
+freeVars NumLit{} = S'.empty
+freeVars StrLit{} = S'.empty
 freeVars (Record fs) = foldMap freeVars $ V.map snd fs
 freeVars (Ctor _ es) = foldMap freeVars es
 freeVars (Var v) = S'.singleton v
@@ -115,7 +117,8 @@ simplifyLet bs expr =
     foldr mkLet (simplifyExpr expr) $ convert <$> sccs
 
 simplifyExpr :: S.Expr -> Expr
-simplifyExpr (S.Lit l) = Lit l
+simplifyExpr (S.NumLit n) = NumLit n
+simplifyExpr (S.StrLit s) = StrLit s
 simplifyExpr (S.Tuple es) = Ctor "Tuple" $ simplifyExpr <$> es
 simplifyExpr (S.List es) = foldr (\h t -> Ctor "::" [simplifyExpr h, t]) (Ctor "Nil" []) es
 

@@ -5,7 +5,7 @@ import Data.Text qualified as T
 import Data.Vector(Vector)
 import Data.Vector qualified as V
 
-import Language.Dynasty.Syntax(Ident, Lit(..))
+import Language.Dynasty.Syntax(Ident, Num'(..))
 import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Core
 import Utils
@@ -44,7 +44,8 @@ ident i
   | otherwise = "_" <> T.replace "'" "_" i
 
 isWhnf :: Expr -> Bool
-isWhnf Lit{} = True
+isWhnf NumLit{} = True
+isWhnf StrLit{} = True
 isWhnf Ctor{} = True
 isWhnf Record{} = True
 isWhnf Lambda{} = True
@@ -72,9 +73,11 @@ compileLetRec bs e = "(()=>{" <> decls <> assigns <> "return " <> compileExpr e 
     assigns = foldMap (\(i, v) -> ident i <> ".$f=()=>" <> parenthesize v <> ";") bs
 
 check :: JS -> Check -> JS
-check e (IsLit (Int i)) = e <> "===" <> showT i
-check e (IsLit (Char c)) = e <> "===" <> showT c
-check e (IsLit (Str s)) = e <> "===" <> showT s
+check e (IsNum NaN) = "isNaN(" <> e <> ")"
+check e (IsNum Inf) = e <> "===Infinity"
+check e (IsNum NegInf) = e <> "===-Infinity"
+check e (IsNum (Num n)) = e <> "===" <> showT n
+check e (IsStr s) = e <> "===" <> showT s
 check e (IsCtor c) = e <> ".$" <> "===" <> showT c
 check e IsRecord = "typeof(" <> e <> ")==='object'&&" <> e <> ".$===undefined"
 check e (HasFields n) = "(Object.keys(" <> e <> ").length-1)===" <> showT n
@@ -112,9 +115,11 @@ compileCase s bs = "(" <> foldr branch "()=>{throw 'Incomplete pattern match';}"
             decls = foldMap (\(path, i) -> "const " <> ident i <> "={$v:" <> path <> "};") as
 
 compileExpr :: Expr -> JS
-compileExpr (Lit (Int i)) = showT i
-compileExpr (Lit (Char c)) = showT c
-compileExpr (Lit (Str s)) = showT s
+compileExpr (NumLit NaN) = "NaN"
+compileExpr (NumLit Inf) = "Infinity"
+compileExpr (NumLit NegInf) = "-Infinity"
+compileExpr (NumLit (Num n)) = showT n
+compileExpr (StrLit s) = showT s
 
 compileExpr (Record fs) = "{" <> fields <> "}"
   where

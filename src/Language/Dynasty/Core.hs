@@ -5,7 +5,7 @@ module Language.Dynasty.Core where
 import Data.Text(Text)
 import Data.Vector(Vector)
 
-import Language.Dynasty.Syntax(Ident, Lit)
+import Language.Dynasty.Syntax(Ident, Num')
 
 -- In Core there are no patterns.
 -- Instead, each branch of a case expression becomes a pair of "checks" and "assignments".
@@ -21,7 +21,8 @@ data Dig
 
 -- Check properties of a value.
 data Check
-  = IsLit Lit
+  = IsNum Num'
+  | IsStr Text
   | IsCtor Text
   | IsRecord
   | HasFields Int
@@ -30,7 +31,8 @@ data Check
   deriving stock Show
 
 data Expr
-  = Lit Lit
+  = NumLit Num'
+  | StrLit Text
   | Record (Vector (Ident, Expr))
   | Ctor Ident (Vector Expr)
   | Var Ident

@@ -1,5 +1,6 @@
 module Language.Dynasty.Parser(parse, varOpChars) where
 
+import Control.Monad.Combinators.Expr(Operator (..), makeExprParser)
 import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Foldable(foldl')
@@ -15,7 +16,6 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Syntax
-import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 
 type Parser = Parsec Void Text
 
@@ -44,7 +44,7 @@ parens :: Parser a -> Parser a
 parens = btwn "(" ")"
 
 reservedNames :: [Text]
-reservedNames = ["case", "of", "let", "and", "in"]
+reservedNames = ["case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
 
 reservedOps :: [Text]
 reservedOps = ["=", "\\", "->", "|"]
@@ -123,26 +123,27 @@ recLit = record . recField
 list :: Parser (Syn k) -> Parser (Syn k)
 list term = List . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
 
-intRaw :: Parser Integer
-intRaw = L.signed (pure ()) (lexeme L.decimal) <?> "Integer literal"
+signed :: Num a => Parser (a -> a)
+signed = (char '-' $> negate) <|> pure id
 
-charRaw :: Parser Char
-charRaw = lexeme (between (char '\'') (char '\'') L.charLiteral) <?> "Character literal"
+numLit :: Parser (Syn a)
+numLit =
+  choice @[]
+  [ NumLit NaN <$ symbol "NaN"
+  , NumLit Inf <$ symbol "Infinity"
+  , NumLit NegInf <$ symbol "-Infinity"
+  , NumLit . Num <$> (signed <*> lexeme L.scientific)
+  ]
+  <?> "Integer literal"
 
 strRaw :: Parser Text
 strRaw = lexeme (char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack) <?> "String literal"
 
-intLit :: Parser (Syn k)
-intLit = Lit . Int <$> intRaw
-
-charLit :: Parser (Syn k)
-charLit = Lit . Char <$> charRaw
-
 strLit :: Parser (Syn k)
-strLit = Lit . Str <$> strRaw
+strLit = StrLit <$> strRaw
 
 simpleLit :: Parser (Syn k)
-simpleLit = try intLit <|> charLit <|> strLit
+simpleLit = try numLit <|> strLit
 
 var :: Parser (Syn k)
 var = Var <$> varIdent
@@ -188,13 +189,10 @@ exprSimple =
 wildcard :: Parser Pat
 wildcard = symbol "_" $> Wildcard
 
-asPat :: Parser Pat
-asPat = As <$> (varIdent <* symbol "@") <*> patSimple
-
 patSimple :: Parser Pat
 patSimple =
   choice @[]
-  (try <$> [asPat, wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
+  (try <$> [wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
   <?> "Pattern"
 
 ctorHead :: Parser (Vector (Syn a) -> Syn a)
@@ -203,8 +201,14 @@ ctorHead = App . Ctor <$> ctorIdent
 fnHead :: Parser (Vector Expr -> Expr)
 fnHead = App . Fn <$> exprFieldAccess
 
+asPat :: Parser Pat
+asPat = As <$> (patSimple <* symbol "as") <*> varIdent
+
+patAs :: Parser Pat
+patAs = try asPat <|> patSimple
+
 patCtorApp :: Parser Pat
-patCtorApp = try (ctorHead <*> (V.fromList <$> some patSimple)) <|> patSimple
+patCtorApp = try (ctorHead <*> (V.fromList <$> some patAs)) <|> patAs
 
 patOps :: [[Operator Parser Pat]]
 patOps =

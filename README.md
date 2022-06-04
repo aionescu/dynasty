@@ -4,13 +4,13 @@
   <img src="assets/logo.png" alt="Dynasty Logo" width="150" height="150"/>
 </div>
 
-Dynasty is an interpreted, dynamically-typed, lazily evaluated, purely functional programming language.
+Dynasty is a dynamically-typed, lazily evaluated, purely functional programming language that compiles to JavaScript.
 
 ## Examples
 
-You can find some test programs in the [examples](examples) folder.
+You can find some Dynasty programs in the [examples](examples) folder.
 
-The most interesting one is the [Brainfuck interpreter](examples/bf/bf.dy).
+The most interesting one is the [Brainfuck interpreter](examples/bf.dy).
 
 ## Building & running
 

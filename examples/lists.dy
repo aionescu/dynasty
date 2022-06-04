@@ -1,0 +1,41 @@
+($) f a = f a and
+
+if b t f =
+  case b of
+  | True -> t
+  | False -> f
+and
+
+take n l =
+  case (n, l) of
+  | (0, _) -> []
+  | (_, []) -> []
+  | (n, a :: as') -> a :: take (n - 1) as'
+and
+
+(..) a b =
+  if (a == b)
+    [a]
+    (if (a < b)
+      (a :: (a + 1 .. b))
+      (a :: (a - 1 .. b)))
+and
+
+map f = \case
+  | [] -> []
+  | a :: as' -> f a :: map f as'
+and
+
+fix f = let x = f x in x and
+
+-- Mutual recursion
+b = 1 :: c and
+c = 2 :: b and
+
+main =
+  print (take 20 $ fix \a. 1 :: a) *>
+  print (1 .. 15) *>
+  print (15 .. 1) *>
+  print (-5 .. 5) *>
+  print (map ((+) 2) $ 1 .. 10) *>
+  print (take 20 b)

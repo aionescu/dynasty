@@ -40,7 +40,7 @@ validatePat (List es) = traverse_ validatePat es
 
 validatePat (Record es)
   | not $ uniqueIdents es = throwError "Duplicate field in record pattern"
-  | otherwise = traverse_ addVar $ V.map fst es
+  | otherwise = traverse_ (\(f, e) -> maybe (addVar f) validatePat e) es
 
 validatePat (Var v) = addVar v
 validatePat (App (Ctor _) es) = traverse_ validatePat es

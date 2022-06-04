@@ -1,3 +1,19 @@
+($) f a = f a and
+
+if b t e =
+  case b of
+  | True -> t
+  | False -> e
+and
+
+chars s =
+  let
+    l = length s and
+    go i = if (i == l) [] (s ! i :: go (i + 1))
+  in
+    go 0
+and
+
 return a s = Just (a, s) and
 fail _ = Nothing and
 
@@ -26,6 +42,6 @@ and
       | Just (b', s'') -> Just ((a', b'), s'')
 and
 
-run p s = p (explode s) and
+run p = p . chars and
 
-main = run (char 'a' <+> (char 'b' <|> char 'c')) "abc"
+main = print $ run (char "a" <+> (char "b" <|> char "c")) "abc"

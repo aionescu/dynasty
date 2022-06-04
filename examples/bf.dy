@@ -1,31 +1,48 @@
+($) f a = f a and
+(;) f g x = g (f x) and
+
+if b t e =
+  case b of
+  | True -> t
+  | False -> e
+and
+
+chars s =
+  let
+    l = length s and
+    go i = if (i == l) [] (s ! i :: go (i + 1))
+  in
+    go 0
+and
+
 reverse =
   let go acc = \case
     | [] -> acc
-    | a :: as -> go (a :: acc) as
+    | a :: as' -> go (a :: acc) as'
   in
   go []
 and
 
 head (a :: _) = a and
-tail (_ :: as) = as and
+tail (_ :: as') = as' and
 
 parse =
   let go scope stack = \case
     | [] ->
       ( case stack of
         | [] -> reverse scope
-        | _ -> Exception "Ummatched '['."
+        | _ -> throw "Ummatched \"[\"."
       )
-    | '+' :: cs -> go (Incr :: scope) stack cs
-    | '-' :: cs -> go (Decr :: scope) stack cs
-    | '<' :: cs -> go (MovL :: scope) stack cs
-    | '>' :: cs -> go (MovR :: scope) stack cs
-    | ',' :: cs -> go (Read :: scope) stack cs
-    | '.' :: cs -> go (Write :: scope) stack cs
-    | '[' :: cs -> go [] (scope :: stack) cs
-    | ']' :: cs ->
+    | "+" :: cs -> go (Incr :: scope) stack cs
+    | "-" :: cs -> go (Decr :: scope) stack cs
+    | "<" :: cs -> go (MovL :: scope) stack cs
+    | ">" :: cs -> go (MovR :: scope) stack cs
+    | "," :: cs -> go (Read :: scope) stack cs
+    | "." :: cs -> go (Write :: scope) stack cs
+    | "[" :: cs -> go [] (scope :: stack) cs
+    | "]" :: cs ->
       ( case stack of
-        | [] -> Exception "Unmatched ']'."
+        | [] -> throw "Unmatched \"]\"."
         | parent :: stack -> go (Loop (reverse scope) :: parent) stack cs
       )
     | _ :: cs -> go scope stack cs
@@ -42,14 +59,14 @@ wrap = \case
   | n -> n
 and
 
-evalOp op tape@{left,crr,right} =
+evalOp op ({ left, crr, right } as tape) =
   case op of
   | Incr -> pure { left, crr = wrap (crr + 1), right }
   | Decr -> pure { left, crr = wrap (crr - 1), right }
   | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
   | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
-  | Read -> getChar >>= \c. pure { left, crr = charToNum c, right }
-  | Write -> putChar (numToChar crr) *> pure tape
+  | Read -> getChar >>= \c. pure { left, crr = toCharCode c, right }
+  | Write -> putChar (fromCharCode crr) *> pure tape
   | Loop ops ->
       case crr of
       | 0 -> pure tape
@@ -64,4 +81,7 @@ and
 
 eval ops = evalOps ops tape *> pure () and
 
-main = (head <$> getArgs) >>= readFile >>= (explode; parse; eval)
+main =
+  getArgs >>= \case
+    | [file] -> readFile file >>= (chars; parse; eval)
+    | _ -> throw "Expecting exactly 1 arg."

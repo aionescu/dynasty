@@ -37,7 +37,7 @@ data Expr
   | Ctor Ident (Vector Expr)
   | Var Ident
   | FieldAccess Expr Ident
-  | Case Ident (Vector (Dig, Expr))
+  | Case Ident Expr (Vector (Dig, Expr))
   | Lambda Ident Expr
   | App Expr Expr
   | Let Ident Expr Expr

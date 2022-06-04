@@ -18,7 +18,15 @@ import System.Exit (exitFailure, exitWith)
 import Control.Monad (when)
 
 preludeEnv :: Set Text
-preludeEnv = S.fromList ["+", "-", "*", "/", "%", ">>=", "*>", "pure", "print", "==", "<", "."]
+preludeEnv =
+  S.fromList
+  [ "+", "-", "*", "/", "%"
+  , "==", "<", "."
+  , "!", "length", "show"
+  , ">>=", "*>", "pure", "putStrLn", "print", "throw", "getArgs"
+  , "fromCharCode", "toCharCode"
+  , "getChar", "putChar" , "readFile"
+  ]
 
 getCode :: FilePath -> IO Text
 getCode "-" = T.getContents

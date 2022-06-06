@@ -10,6 +10,7 @@ import Data.Map.Strict(Map)
 import Data.Map.Strict qualified as M
 import Data.Set(Set)
 import Data.Set qualified as S'
+import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
 import Data.Vector(Vector)
@@ -58,7 +59,7 @@ simplifyPat e = \case
 simplifyCase :: Ident -> Vector (S.Pat, Expr) -> Expr
 simplifyCase v bs = Case $ bs <&> \(p, e) ->
   let (cs, as) = simplifyPat (Var v) p
-  in (cs, foldr (\(e', i) -> Let i e') e as)
+  in (cs, Let [(False, swap <$> as)] e)
 
 simplifyLam :: MonadReader Int m => Vector S.Pat -> S.Expr -> m Expr
 simplifyLam vs e =
@@ -79,9 +80,9 @@ freeVars (Field e _) = freeVars e
 freeVars (Case bs) = foldMap (\(cs, e) -> foldMap (freeVars . fst) cs <> freeVars e) bs
 freeVars (Lambda v e) = freeVars e S'.\\ S'.singleton v
 freeVars (App f a) = freeVars f <> freeVars a
-freeVars (Let v e e') = freeVars e <> (freeVars e' S'.\\ S'.singleton v)
-freeVars (LetRec bs e) =
-  (freeVars e <> foldMap (freeVars . snd) bs) S'.\\ foldMap (S'.singleton . fst) bs
+freeVars (Let bs e) =
+  (freeVars e <> foldMap (foldMap (freeVars . snd) . snd) bs)
+  S'.\\ foldMap (foldMap (S'.singleton . fst) . snd) bs
 
 depGraph :: Vector (Ident, Expr) -> Vector (Ident, Set Ident)
 depGraph bs = V.map (second $ S'.intersection vars . freeVars) bs
@@ -108,13 +109,10 @@ getSCCs bs =
     (idents, V.fromList $ getIdents <$> sccs)
 
 simplifyLet :: Vector (Ident, Expr) -> Expr -> Expr
-simplifyLet bs expr = foldr mkLet expr $ convert <$> sccs
+simplifyLet bs = Let (convert <$> sccs)
   where
     (idents, sccs) = getSCCs bs
     convert (r, scc) = (r, V.fromList $ (\i -> bs V.! (idents M.! i)) <$> S'.toList scc)
-
-    mkLet (True, is) e = LetRec is e
-    mkLet (False, V.head -> (i, v)) e = Let i v e
 
 withVar :: MonadReader Int m => (Ident -> m a) -> m a
 withVar f = do
@@ -133,8 +131,12 @@ simplifyExpr (S.Record es) = Record <$> for es \case
 simplifyExpr (S.Var v) = pure $ Var v
 simplifyExpr (S.RecordField e f) = (`Field` f) <$> simplifyExpr e
 simplifyExpr (S.CtorField e i) = (`Field` ("$" <> showT i)) <$> simplifyExpr e
-simplifyExpr (S.Case e bs) = withVar \v ->
-  Let v <$> simplifyExpr e <*> (simplifyCase v <$> simplifyGroup bs)
+simplifyExpr (S.Case e bs)
+  | S.Var v <- e, T.head v == '_' = simplifyCase v <$> simplifyGroup bs
+  | otherwise = withVar \v ->
+      (\e' -> Let [(False, [(v, e')])])
+      <$> simplifyExpr e
+      <*> (simplifyCase v <$> simplifyGroup bs)
 simplifyExpr (S.Lambda vs e) = simplifyLam vs e
 simplifyExpr (S.LambdaCase bs) = withVar \v -> Lambda v <$> simplifyExpr (S.Case (S.Var v) bs)
 simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor <$> traverse simplifyExpr es

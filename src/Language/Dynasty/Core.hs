@@ -26,6 +26,5 @@ data Expr
   | Case (Vector Branch)
   | Lambda Ident Expr
   | App Expr Expr
-  | Let Ident Expr Expr
-  | LetRec (Vector (Ident, Expr)) Expr
+  | Let (Vector (Bool, Vector (Ident, Expr))) Expr
   deriving stock Show

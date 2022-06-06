@@ -9,7 +9,6 @@ import Language.Dynasty.Syntax(Ident, Num'(..))
 import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Core
 import Utils
-import Data.Bifunctor(first)
 
 type JS = Text
 
@@ -43,20 +42,14 @@ ident i
   | T.head i == '_' || T.head i == '$' = i
   | otherwise = "_" <> T.replace "'" "_" i
 
-compileLet :: Expr -> JS
-compileLet e' = "(()=>{" <> bindings <> "return " <> compileExpr e <> ";})()"
+compileLet :: Vector (Bool, Vector (Ident, Expr)) -> Expr -> JS
+compileLet gs e = "(()=>{" <> foldMap bindingGroup gs <> "return " <> compileExpr e <> ";})()"
   where
-    bindings = foldMap (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
-    (bs, e) = packLets e'
-
-    packLets (Let i v s) = first ((i, v) :) $ packLets s
-    packLets s = ([], s)
-
-compileLetRec :: Vector (Ident, Expr) -> Expr -> JS
-compileLetRec bs e = "(()=>{" <> decls <> assigns <> "return " <> compileExpr e <> ";})()"
-  where
-    decls = foldMap ((\i -> "const " <> ident i <> "={};") . fst) bs
-    assigns = foldMap (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
+    bindingGroup (False, bs) = foldMap (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
+    bindingGroup (True, bs) = decls <> assigns
+      where
+        decls = foldMap ((\i -> "const " <> ident i <> "={};") . fst) bs
+        assigns = foldMap (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
 
 check :: JS -> Check -> JS
 check e (IsNum NaN) = "isNaN(" <> e <> ")"
@@ -95,8 +88,7 @@ compileExpr (Field e i) = "e(" <> compileExpr e <> "." <> ident i <> ")"
 compileExpr (Case bs) = compileCase bs
 compileExpr (Lambda i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
 compileExpr (App f a) = compileExpr f <> "(" <> thunk a <> ")"
-compileExpr e@Let{} = compileLet e
-compileExpr (LetRec bs e) = compileLetRec bs e
+compileExpr (Let bs e) = compileLet bs e
 
 isWhnf :: Expr -> Bool
 isWhnf NumLit{} = True

@@ -7,28 +7,14 @@ import Data.Vector(Vector)
 
 import Language.Dynasty.Syntax(Ident, Num')
 
--- In Core there are no patterns.
--- Instead, each branch of a case expression becomes a pair of "checks" and "assignments".
-
--- Dig into a value.
-data Dig
-  = Field Int Dig
-  | RecField Ident Dig
-  | And Dig Dig
-  | Check Check
-  | Assign Ident
-  deriving stock Show
-
--- Check properties of a value.
 data Check
   = IsNum Num'
   | IsStr Text
-  | IsCtor Text
-  | IsRecord
-  | HasFields Int
-  | HasRecField Ident
-  | NoOp
+  | IsCtor Text Int
+  | HasField Ident
   deriving stock Show
+
+type Branch = (Vector (Expr, Check), Expr)
 
 data Expr
   = NumLit Num'
@@ -36,8 +22,8 @@ data Expr
   | Record (Vector (Ident, Expr))
   | Ctor Ident (Vector Expr)
   | Var Ident
-  | FieldAccess Expr Ident
-  | Case Ident Expr (Vector (Dig, Expr))
+  | Field Expr Ident
+  | Case (Vector Branch)
   | Lambda Ident Expr
   | App Expr Expr
   | Let Ident Expr Expr

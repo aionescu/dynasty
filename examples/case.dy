@@ -1,3 +1,10 @@
+($) f a = f a and
+
+traverse f = \case
+  | [] -> pure ()
+  | x :: xs -> f x *> traverse f xs
+and
+
 f = \case
   | 0 -> ("is 0", ())
   | (a, 2) -> ("is tuple", a)
@@ -9,10 +16,12 @@ f = \case
 and
 
 main =
-  print (f 0) *>
-  print (f (1, 2)) *>
-  print (f { x = 10 }) *>
-  print (f (Some [2, 20])) *>
-  print (f NaN) *>
-  print (f Infinity) *>
-  print (f -Infinity)
+  traverse print
+  [ f 0
+  , f (1, 2)
+  , f { x = 10 }
+  , f $ Some [2, 20]
+  , f NaN
+  , f Infinity
+  , f -Infinity
+  ]

@@ -4,7 +4,7 @@ import Control.Monad.Combinators.Expr(Operator (..), makeExprParser)
 import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Foldable(foldl')
-import Data.Function(on)
+import Data.Function(on, (&))
 import Data.Functor((<&>), ($>))
 import Data.Text(Text)
 import Data.Text qualified as T
@@ -199,7 +199,7 @@ ctorHead :: Parser (Vector (Syn a) -> Syn a)
 ctorHead = App . Ctor <$> ctorIdent
 
 fnHead :: Parser (Vector Expr -> Expr)
-fnHead = App . Fn <$> exprFieldAccess
+fnHead = App . Fn <$> exprField
 
 asPat :: Parser Pat
 asPat = As <$> (patSimple <* symbol "as") <*> varIdent
@@ -220,16 +220,18 @@ pat :: Parser Pat
 pat = makeExprParser patCtorApp patOps
 
 fieldAccess :: Parser Expr
-fieldAccess = foldl' FieldAccess <$> exprSimple <*> try (some (char '.' *> varIdent))
+fieldAccess = foldl' (&) <$> exprSimple <*> try (some (char '.' *> field))
+  where
+    field = (flip CtorField <$> lexeme L.decimal) <|> (flip RecordField <$> varIdent)
 
-exprFieldAccess :: Parser Expr
-exprFieldAccess = try fieldAccess <|> exprSimple
+exprField :: Parser Expr
+exprField = try fieldAccess <|> exprSimple
 
 appHead :: Parser (Vector Expr -> Expr)
 appHead = try ctorHead <|> fnHead
 
 exprApp :: Parser Expr
-exprApp = try (appHead <*> (V.fromList <$> some exprFieldAccess)) <|> exprFieldAccess
+exprApp = try (appHead <*> (V.fromList <$> some exprField)) <|> exprField
 
 exprOps :: [[Operator Parser Expr]]
 exprOps =

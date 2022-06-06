@@ -3,7 +3,7 @@ module Language.Dynasty.Validate(validate) where
 import Control.Monad.Except(MonadError, throwError, liftEither)
 import Control.Monad.Reader(MonadReader, asks, local, ReaderT (runReaderT))
 import Control.Monad.State.Strict(MonadState, gets, modify, execStateT)
-import Data.Foldable(traverse_, fold)
+import Data.Foldable(traverse_)
 import Data.Function((&))
 import Data.Functor(($>))
 import Data.Set(Set)
@@ -75,9 +75,10 @@ validateExpr (Var v) = asks (S.member v) >>= \case
   False -> throwError $ "Undefined variable " <> showT v
   True -> pure ()
 
-validateExpr (FieldAccess e _) = validateExpr e
+validateExpr (RecordField e _) = validateExpr e
+validateExpr (CtorField e _) = validateExpr e
 validateExpr (Case s bs) = validateExpr s *> traverse_ (uncurry validateBranch) bs
-validateExpr (Lambda vs e) = traverse patVars vs >>= \vars -> withVars (fold vars) $ validateExpr e
+validateExpr (Lambda vs e) = traverse patVars vs >>= \vars -> local (<> S.unions vars) $ validateExpr e
 validateExpr (LambdaCase bs) = traverse_ (uncurry validateBranch) bs
 validateExpr (App (Ctor _) es) = traverse_ validateExpr es
 validateExpr (App (Fn f) es) = validateExpr f *> traverse_ validateExpr es

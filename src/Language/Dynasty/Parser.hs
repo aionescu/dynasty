@@ -44,7 +44,7 @@ parens :: Parser a -> Parser a
 parens = btwn "(" ")"
 
 reservedNames :: [Text]
-reservedNames = ["case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
+reservedNames = ["import", "case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
 
 reservedOps :: [Text]
 reservedOps = ["=", "\\", "->", "|"]
@@ -100,10 +100,10 @@ opInfixCtor :: Parser (Syn a -> Syn a -> Syn a)
 opInfixCtor = between (char '`') (char '`') ctorName <&> \o a b -> App (Ctor o) [a, b]
 
 varIdent :: Parser Text
-varIdent = varName <|> parens (operator $ oneOf varOpChars)
+varIdent = varName <|> try (parens $ operator $ oneOf varOpChars)
 
 ctorIdent :: Parser Text
-ctorIdent = ctorName <|> parens (operator $ char ':')
+ctorIdent = ctorName <|> try (parens $ operator $ char ':')
 
 tuple :: Parser (Syn k) -> Parser (Syn k)
 tuple term = parens $ mkTup <$> (try term `sepBy` symbol ",")
@@ -111,14 +111,11 @@ tuple term = parens $ mkTup <$> (try term `sepBy` symbol ",")
     mkTup [a] = a
     mkTup l = Tuple $ V.fromList l
 
-recField :: Parser (Syn k) -> Parser (Ident, Maybe (Syn k))
-recField p = (,) <$> varIdent <*> optional (symbol "=" *> p)
-
-record :: Parser (Ident, Maybe (Syn k)) -> Parser (Syn k)
-record term = Record . V.fromList <$> btwn "{" "}" (term `sepBy` symbol ",") <?> "Record literal"
-
-recLit :: Parser (Syn k) -> Parser (Syn k)
-recLit = record . recField
+record :: Parser (Syn k) -> Parser (Syn k)
+record term =
+  Record . V.fromList <$> btwn "{" "}" (field `sepBy` symbol ",") <?> "Record literal"
+  where
+    field = (,) <$> varIdent <*> optional (symbol "=" *> term)
 
 list :: Parser (Syn k) -> Parser (Syn k)
 list term = List . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
@@ -174,7 +171,7 @@ bindingGroup = V.fromList <$> try binding `sepBy1` symbol "and"
 let' :: Parser Expr
 let' =
   Let
-  <$> try (symbol "let" *> bindingGroup)
+  <$> (symbol "let" *> bindingGroup)
   <*> (symbol "in" *> expr)
 
 case' :: Parser Expr
@@ -183,7 +180,7 @@ case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> (V.fromList <$> many
 exprSimple :: Parser Expr
 exprSimple =
   choice @[]
-  (try <$> [let', lam, case', recLit expr, list expr, tuple expr, simpleLit, ctorSimple, var])
+  [ctorSimple, var, tuple expr, let', lam, case', record expr, list expr, simpleLit]
   <?> "Expression"
 
 wildcard :: Parser Pat
@@ -192,7 +189,7 @@ wildcard = symbol "_" $> Wildcard
 patSimple :: Parser Pat
 patSimple =
   choice @[]
-  (try <$> [wildcard, recLit pat, list pat, tuple pat, simpleLit, ctorSimple, var])
+  [ctorSimple, var, tuple pat, record pat, list pat, simpleLit, wildcard]
   <?> "Pattern"
 
 ctorHead :: Parser (Vector (Syn a) -> Syn a)
@@ -202,13 +199,13 @@ fnHead :: Parser (Vector Expr -> Expr)
 fnHead = App . Fn <$> exprField
 
 asPat :: Parser Pat
-asPat = As <$> (patSimple <* symbol "as") <*> varIdent
-
-patAs :: Parser Pat
-patAs = try asPat <|> patSimple
+asPat = as <$> patSimple <*> optional (try $ symbol "as" *> varIdent)
+  where
+    as p Nothing = p
+    as p (Just v) = As p v
 
 patCtorApp :: Parser Pat
-patCtorApp = try (ctorHead <*> (V.fromList <$> some patAs)) <|> patAs
+patCtorApp = try (ctorHead <*> (V.fromList <$> some asPat)) <|> asPat
 
 patOps :: [[Operator Parser Pat]]
 patOps =
@@ -219,19 +216,16 @@ patOps =
 pat :: Parser Pat
 pat = makeExprParser patCtorApp patOps
 
-fieldAccess :: Parser Expr
-fieldAccess = foldl' (&) <$> exprSimple <*> try (some (char '.' *> field))
+exprField :: Parser Expr
+exprField = foldl' (&) <$> exprSimple <*> many (try $ char '.' *> field)
   where
     field = (flip CtorField <$> lexeme L.decimal) <|> (flip RecordField <$> varIdent)
-
-exprField :: Parser Expr
-exprField = try fieldAccess <|> exprSimple
 
 appHead :: Parser (Vector Expr -> Expr)
 appHead = try ctorHead <|> fnHead
 
 exprApp :: Parser Expr
-exprApp = try (appHead <*> (V.fromList <$> some exprField)) <|> exprField
+exprApp = appHead <*> (V.fromList <$> many exprField)
 
 exprOps :: [[Operator Parser Expr]]
 exprOps =

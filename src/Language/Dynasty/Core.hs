@@ -26,4 +26,5 @@ data Expr
   | Lambda Ident Expr
   | App Expr Expr
   | Let [(Bool, [(Ident, Expr)])] Expr
+  | UnsafeJS Bool [Ident] Text
   deriving stock Show

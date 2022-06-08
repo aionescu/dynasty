@@ -1,10 +1,4 @@
-($) f a = f a and
-
-if b t e =
-  case b of
-  | True -> t
-  | False -> e
-and
+module Parser
 
 chars s =
   let

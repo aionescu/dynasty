@@ -1,11 +1,12 @@
 module Language.Dynasty.Validate(validate) where
 
-import Control.Monad.Except(MonadError, throwError, liftEither)
-import Control.Monad.Reader(MonadReader, asks, local, ReaderT (runReaderT))
+import Control.Monad.Except(MonadError, throwError, liftEither, mapError)
+import Control.Monad.Reader(MonadReader, asks, local, ReaderT(runReaderT), ask)
 import Control.Monad.State.Strict(MonadState, gets, modify, execStateT)
 import Data.Foldable(traverse_)
 import Data.Function((&))
 import Data.Functor(($>))
+import Data.Map.Strict qualified as M
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
@@ -13,17 +14,15 @@ import Data.Text(Text)
 import Language.Dynasty.Syntax
 import Utils
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
+import Control.Monad (unless, when)
+import Data.Bifunctor (first)
 
--- This module validates the Syntax before it is simplified into Core.
--- Currently it checks for:
--- * Undefined variables
--- * Duplicate record fields
--- * Duplicate variables within the same pattern
--- * Duplicate bindings in let expressions
+uniqueBy :: Ord b => (a -> b) -> [a] -> Bool
+uniqueBy f l = length l == length (nubOrdOn f l)
 
 uniqueIdents :: [(Ident, a)] -> Bool
-uniqueIdents l = length (nubOrdOn fst l) == length l
+uniqueIdents = uniqueBy fst
 
 type Env = Set Ident
 
@@ -66,15 +65,12 @@ validateExpr NumLit{} = pure ()
 validateExpr StrLit{} = pure ()
 validateExpr (Tuple es) = traverse_ validateExpr es
 validateExpr (List es) = traverse_ validateExpr es
-
 validateExpr (Record es)
   | not $ uniqueIdents es = throwError "Duplicate field in record expression"
   | otherwise = traverse_ validateExpr $ mapMaybe snd es
-
 validateExpr (Var v) = asks (S.member v) >>= \case
   False -> throwError $ "Undefined variable " <> showT v
   True -> pure ()
-
 validateExpr (RecordField e _) = validateExpr e
 validateExpr (CtorField e _) = validateExpr e
 validateExpr (Case s bs) = validateExpr s *> traverse_ (uncurry validateBranch) bs
@@ -82,14 +78,92 @@ validateExpr (Lambda vs e) = traverse patVars vs >>= \vars -> local (<> S.unions
 validateExpr (LambdaCase bs) = traverse_ (uncurry validateBranch) bs
 validateExpr (App (Ctor _) es) = traverse_ validateExpr es
 validateExpr (App (Fn f) es) = validateExpr f *> traverse_ validateExpr es
+validateExpr (Let bs e) = withBindingGroup bs $ validateExpr e
+validateExpr (UnsafeJS _ vs _) =
+  ask >>= \env ->
+    unless (all (`elem` env) vs) do
+      throwError "UnsafeJS: Undefined variable"
 
-validateExpr (Let bs e)
-  | not $ uniqueIdents bs = throwError "Duplicate binding in let expression"
-  | otherwise =
-      withVars (S.fromList $ fst <$> bs) $
-        traverse_ (validateExpr . snd) bs *> validateExpr e
+withBindingGroup :: (MonadReader Env m, MonadError Text m) => BindingGroup -> m () -> m ()
+withBindingGroup bs m
+  | not $ uniqueIdents bs = throwError "Variable redefined in binding group"
+  | otherwise = withVars (S.fromList $ fst <$> bs) $ traverse_ (validateExpr . snd) bs *> m
 
-validate :: MonadError Text m => Env -> BindingGroup -> m BindingGroup
-validate prelude bs =
-  validateExpr (Let bs $ Var "main") $> bs
-  & flip runReaderT prelude
+validateBindingGroup :: (MonadReader Env m, MonadError Text m) => BindingGroup -> m ()
+validateBindingGroup bs = withBindingGroup bs $ pure ()
+
+mainExists :: MonadError Text m => Bool -> [Module] -> m ()
+mainExists singleFile ms =
+  unless (any isMain ms) do
+    throwError "No suitable Main module found"
+  where
+    isMain Module{..} = (singleFile || moduleName == "Main") && elem "main" (fst <$> moduleBindings)
+
+modulesUnique :: MonadError Text m => [Module] -> m ()
+modulesUnique ms =
+  unless (uniqueBy moduleName ms) do
+    throwError "Duplicate module name declaration"
+
+importsUnique :: MonadError Text m => Module -> m ()
+importsUnique Module{..} =
+  unless (uniqueBy importModule moduleImports) do
+    throwError "Duplicate import"
+
+importIdentsUnique :: MonadError Text m => Module -> m ()
+importIdentsUnique Module{..} =
+  unless (uniqueBy id (importIdents <$> moduleImports)) do
+    throwError "Identifier imported multiple times"
+
+importsNotShadowed :: MonadError Text m => Module -> m ()
+importsNotShadowed Module{..} =
+  when (any (`elem` imports) $ fst <$> moduleBindings) do
+    throwError "Imported identifier is shadowed"
+  where
+    imports = fromMaybe [] . importIdents =<< moduleImports
+
+exportsUnique :: MonadError Text m => Module -> m ()
+exportsUnique Module{..} =
+  unless (uniqueBy id moduleExports) do
+    throwError "Identifier exported multiple times"
+
+exportsDefined :: MonadError Text m => Module -> m ()
+exportsDefined Module{..} =
+  unless (all (`elem` idents) moduleExports) do
+    throwError "Undeclared identifier exported"
+  where
+    idents = fst <$> moduleBindings
+
+validateModule :: (MonadReader Env m, MonadError Text m) => Module -> m ()
+validateModule m@Module{..} =
+  mapError (first (("In module " <> moduleName <> ": ") <>) <$>) do
+    importsUnique m
+    importIdentsUnique m
+    importsNotShadowed m
+    exportsUnique m
+    exportsDefined m
+    withVars (S.fromList $ fromMaybe [] . importIdents =<< moduleImports) $
+      validateBindingGroup moduleBindings
+
+validateModules :: (MonadReader Env m, MonadError Text m) => Bool -> [Module] -> m ()
+validateModules singleFile ms = do
+  modulesUnique ms
+  mainExists singleFile ms
+  traverse_ validateModule ms
+
+fillImports :: [Module] -> [Module]
+fillImports ms = go <$> ms
+  where
+    go m@Module{moduleName="Dynasty.Prelude"} = m
+    go m@Module{..} = m { moduleImports = fill <$> prelude : moduleImports }
+
+    prelude = Import "Dynasty.Prelude" Nothing
+    modExports = M.fromList $ ((,) <$> moduleName <*> moduleExports) <$> ms
+
+    fill i@Import{..} =
+      i { importIdents = Just $ fromMaybe (modExports M.! importModule) importIdents }
+
+validate :: Bool -> [Module] -> Either Text [Module]
+validate singleFile (fillImports -> ms) =
+  validateModules singleFile ms $> ms
+  & flip runReaderT S.empty
+  & first ("Error: " <>)

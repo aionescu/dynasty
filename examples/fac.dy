@@ -1,3 +1,5 @@
+module Fac
+
 -- Self-recursive binding
 fac = \case
   | 0 -> 1

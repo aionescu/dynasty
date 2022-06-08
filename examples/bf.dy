@@ -1,11 +1,6 @@
-($) f a = f a and
-(;) f g x = g (f x) and
+module BF
 
-if b t e =
-  case b of
-  | True -> t
-  | False -> e
-and
+import Dynasty.IO
 
 chars s =
   let

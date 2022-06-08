@@ -8,6 +8,7 @@ import Language.Dynasty.Syntax(Ident, Num'(..))
 import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Core
 import Utils
+import Data.Char (isUpper)
 
 type JS = Text
 
@@ -39,6 +40,7 @@ ident :: Ident -> JS
 ident i
   | T.all (`elem` varOpChars) i = "_" <> T.concatMap opCharName i
   | T.head i == '_' || T.head i == '$' = i
+  | isUpper $ T.head i = "__" <> T.replace "." "$" (T.replace "'" "_" i)
   | otherwise = "_" <> T.replace "'" "_" i
 
 compileLet :: [(Bool, [(Ident, Expr)])] -> Expr -> JS
@@ -87,6 +89,7 @@ compileExpr (Case bs) = compileCase bs
 compileExpr (Lambda i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
 compileExpr (App f a) = compileExpr f <> "(" <> thunk a <> ")"
 compileExpr (Let bs e) = compileLet bs e
+compileExpr (UnsafeJS _ _ js) = js
 
 isWhnf :: Expr -> Bool
 isWhnf NumLit{} = True
@@ -94,6 +97,7 @@ isWhnf StrLit{} = True
 isWhnf Ctor{} = True
 isWhnf Record{} = True
 isWhnf Lambda{} = True
+isWhnf (UnsafeJS whnf _ _) = whnf
 isWhnf _ = False
 
 thunk :: Expr -> JS
@@ -104,9 +108,10 @@ thunk e
   | otherwise = "{f:()=>" <> parenthesize e <> "}"
 
 parenthesize :: Expr -> JS
+parenthesize e@UnsafeJS{} = compileExpr e
 parenthesize (compileExpr -> js)
   | T.isPrefixOf "{" js = "(" <> js <> ")"
   | otherwise = js
 
 compile :: JS -> Expr -> JS
-compile prelude e = prelude <> "\n" <> compileExpr e <> ".r();\n"
+compile prelude e = prelude <> compileExpr e <> ".r();\n"

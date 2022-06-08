@@ -1,4 +1,4 @@
-($) f a = f a and
+module Math
 
 not = \case
   | False -> True

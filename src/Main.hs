@@ -1,55 +1,56 @@
 module Main(main) where
 
 import Data.Functor((<&>))
-import Data.Set(Set)
-import Data.Set qualified as S
 import Data.Text(Text)
 import Data.Text.IO qualified as T
 import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
-import Language.Dynasty.Parser(parse)
+import Language.Dynasty.Parser(parseModule)
 import Language.Dynasty.Validate(validate)
 import Language.Dynasty.Simplify(simplify)
 import Language.Dynasty.Codegen(compile)
 import Opts(Opts(..), getOpts)
-import System.Process (system)
-import System.Exit (exitFailure, exitWith)
-import Control.Monad (when)
+import System.Exit(exitFailure)
+import Control.Monad(join)
+import System.Directory (listDirectory, doesFileExist)
+import System.FilePath ((</>), isExtensionOf, dropExtension, (<.>))
+import Data.Function ((&))
 
-preludeEnv :: Set Text
-preludeEnv =
-  S.fromList
-  [ "+", "-", "*", "/", "%"
-  , "==", "<", "."
-  , "!", "length", "show"
-  , ">>=", "*>", "pure", "putStrLn", "print", "throw", "getArgs"
-  , "fromCharCode", "toCharCode"
-  , "getChar", "putChar" , "readFile"
-  ]
+isSingleFile :: FilePath -> IO Bool
+isSingleFile f = ("dy" `isExtensionOf` f &&) <$> doesFileExist f
 
-pipeline :: Text -> FilePath -> Text -> Either Text Text
-pipeline prelude path code =
-  parse path code
-  >>= \syn ->
-    validate preludeEnv syn
-    <&> simplify
-    <&> compile prelude
+getDyFiles :: FilePath -> IO [FilePath]
+getDyFiles path =
+  doesFileExist path >>= \case
+    True -> pure [path | "dy" `isExtensionOf` path]
+    _ -> (join <$>) . traverse (getDyFiles . (path </>)) =<< listDirectory path
 
-writeJS :: Opts -> Text -> IO ()
-writeJS Opts{..} code = do
-  T.writeFile optsOutPath code
-  when optsRun do
-    system ("node --trace-uncaught " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
-      >>= exitWith
+readModule :: FilePath -> IO (FilePath, Text)
+readModule path = (path,) <$> T.readFile path
 
 run :: Opts -> IO ()
-run opts@Opts{..} = do
-  prelude <- T.readFile "vendored/prelude.js"
-  code <- T.readFile optsPath
+run Opts{..} = do
+  singleFile <- isSingleFile optsPath
+  runtime <- T.readFile $ optsCoreDir </> "runtime.js"
+  coreFiles <- getDyFiles optsCoreDir
+  files <- getDyFiles optsPath
+  modules <- traverse readModule $ coreFiles <> files
 
-  case pipeline prelude optsPath code of
-    Left err -> T.putStrLn err *> exitFailure
-    Right js -> writeJS opts js
+  let
+    outPath =
+      case (optsOutPath, singleFile) of
+        ("", True) -> dropExtension optsPath <.> "js"
+        ("", False) -> optsPath </> "main.js"
+        _ -> optsOutPath
+
+  modules
+    & traverse (uncurry parseModule)
+    >>= validate singleFile
+    <&> simplify singleFile
+    <&> compile runtime
+    & either
+      (\e -> T.putStrLn e *> exitFailure)
+      (T.writeFile outPath)
 
 main :: IO ()
 main = do

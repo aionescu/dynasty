@@ -38,6 +38,7 @@ data Syn :: SynKind -> * where
   LambdaCase :: [(Syn 'P, Syn 'E)] -> Syn 'E
   App :: AppHead a -> [Syn a] -> Syn a
   Let :: BindingGroup -> Syn 'E -> Syn 'E
+  UnsafeJS :: Bool -> [Ident] -> Text -> Syn 'E
 
   Wildcard :: Syn 'P
   As :: Syn 'P -> Ident -> Syn 'P
@@ -48,3 +49,19 @@ type Expr = Syn 'E
 type Pat = Syn 'P
 
 type BindingGroup = [(Ident, Expr)]
+
+data Import =
+  Import
+  { importModule :: Text
+  , importIdents :: Maybe [Ident]
+  }
+  deriving stock Show
+
+data Module =
+  Module
+  { moduleName :: Text
+  , moduleExports :: [Ident]
+  , moduleImports :: [Import]
+  , moduleBindings :: BindingGroup
+  }
+  deriving stock Show

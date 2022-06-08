@@ -1,7 +1,6 @@
-module Language.Dynasty.Parser(parse, varOpChars) where
+module Language.Dynasty.Parser(parseModule, varOpChars) where
 
 import Control.Monad.Combinators.Expr(Operator (..), makeExprParser)
-import Control.Monad.Except(liftEither, MonadError)
 import Data.Bifunctor(first)
 import Data.Foldable(foldl')
 import Data.Function(on, (&))
@@ -14,6 +13,8 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Syntax
+import Data.Maybe(fromMaybe)
+import Data.Containers.ListUtils (nubOrd)
 
 type Parser = Parsec Void Text
 
@@ -42,7 +43,13 @@ parens :: Parser a -> Parser a
 parens = btwn "(" ")"
 
 reservedNames :: [Text]
-reservedNames = ["case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
+reservedNames =
+  [ "unsafejs", "unsafejswhnf"
+  , "module", "import"
+  , "case", "of", "as"
+  , "let", "and", "in"
+  , "NaN", "Infinity"
+  ]
 
 reservedOps :: [Text]
 reservedOps = ["=", "\\", "->", "|"]
@@ -164,7 +171,7 @@ binding = (,) <$> varIdent <*> (args <*> (symbol "=" *> expr))
     args = (Lambda <$> some patSimple) <|> pure id
 
 bindingGroup :: Parser BindingGroup
-bindingGroup = try binding `sepBy1` symbol "and"
+bindingGroup = try binding `sepBy` symbol "and"
 
 let' :: Parser Expr
 let' =
@@ -175,10 +182,15 @@ let' =
 case' :: Parser Expr
 case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> many caseBranch
 
+unsafeJS :: Parser Expr
+unsafeJS = withWhnf <*> (btwn "[" "]" (varIdent `sepBy` symbol ",") <|> pure []) <*> strRaw
+  where
+    withWhnf = UnsafeJS <$> (symbol "unsafejswhnf" $> True <|> symbol "unsafejs" $> False)
+
 exprSimple :: Parser Expr
 exprSimple =
   choice
-  [ctorSimple, var, tuple expr, let', lam, case', record expr, list expr, simpleLit]
+  [ctorSimple, var, tuple expr, let', lam, case', unsafeJS, record expr, list expr, simpleLit]
   <?> "Expression"
 
 wildcard :: Parser Pat
@@ -243,8 +255,23 @@ exprOps =
 expr :: Parser Expr
 expr = makeExprParser exprApp exprOps
 
-program :: Parser BindingGroup
-program = optional shebang *> optional sc *> bindingGroup <* eof
+modName :: Parser Ident
+modName = T.intercalate "." <$> ident upperChar `sepBy1` char '.'
 
-parse :: MonadError Text m => FilePath -> Text -> m BindingGroup
-parse path = liftEither . first (T.pack . errorBundlePretty) . runParser program path
+exportList :: Parser (Maybe [Ident])
+exportList = optional $ try $ parens $ varIdent `sepBy1` symbol ","
+
+import' :: Parser Import
+import' = Import <$> (symbol "import" *> modName) <*> exportList
+
+module' :: Parser Module
+module' = mkModule <$> (symbol "module" *> modName) <*> exportList <*> many import' <*> bindingGroup
+  where
+    mkModule name exports imports bindings =
+      Module name (fromMaybe (nubOrd $ fst <$> bindings) exports) imports bindings
+
+program :: Parser Module
+program = optional shebang *> optional sc *> module' <* eof
+
+parseModule :: FilePath -> Text -> Either Text Module
+parseModule path = first (T.pack . errorBundlePretty) . runParser program path

@@ -1,12 +1,6 @@
+module Lists
+
 main =
-  let ($) f a = f a in
-
-  let if b t f =
-    case b of
-    | True -> t
-    | False -> f
-  in
-
   let take n l =
     case (n, l) of
     | (0, _) -> []

@@ -14,19 +14,12 @@ import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
 
-import Language.Dynasty.Syntax(Ident)
+import Language.Dynasty.Syntax(Ident, Module (..), Import (..))
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Core
-import Utils(showT, imap)
+import Utils(showT, imap, (...))
 import Data.Functor ((<&>))
-
--- This module converts the `Syntax` AST into `Core`.
--- The main differences between Syntax and Core are:
--- * Core differentiates between Let and LetRec.
--- * The are no patterns in Core. Instead, `Case` stores a `Dig` for each branch, which is a
---   deconstruction of a pattern into its "checks" and "assignments".
--- * Lambdas have exactly one identifier argument in Core. Lambdas with pattern arguments and
---   LambdaCase are simplified into a series of Lambdas and Cases.
+import Data.Maybe (fromMaybe)
 
 simplifyPat :: Expr -> S.Pat -> ([(Expr, Check)], [(Expr, Ident)])
 simplifyPat e = \case
@@ -80,6 +73,7 @@ freeVars (App f a) = freeVars f <> freeVars a
 freeVars (Let bs e) =
   (freeVars e <> foldMap (foldMap (freeVars . snd) . snd) bs)
   S'.\\ foldMap (foldMap (S'.singleton . fst) . snd) bs
+freeVars (UnsafeJS _ vs _) = S'.fromList vs
 
 depGraph :: [(Ident, Expr)] -> [(Ident, Set Ident)]
 depGraph bs = second (S'.intersection vars . freeVars) <$> bs
@@ -138,13 +132,28 @@ simplifyExpr (S.Lambda vs e) = simplifyLam vs e
 simplifyExpr (S.LambdaCase bs) = withVar \v -> Lambda v <$> simplifyExpr (S.Case (S.Var v) bs)
 simplifyExpr (S.App (S.Ctor ctor) es) = Ctor ctor <$> traverse simplifyExpr es
 simplifyExpr (S.App (S.Fn f) es) = foldl' App <$> simplifyExpr f <*> traverse simplifyExpr es
+simplifyExpr (S.Let [] e) = simplifyExpr e
 simplifyExpr (S.Let bs e) = simplifyLet <$> simplifyGroup bs <*> simplifyExpr e
+simplifyExpr (S.UnsafeJS whnf vs js) = pure $ UnsafeJS whnf vs js
 
 simplifyGroup :: (MonadReader Int m, Traversable f, Traversable t) => f (t S.Expr) -> m (f (t Expr))
 simplifyGroup = traverse (traverse simplifyExpr)
 
-simplifyExpr' :: S.Expr -> Expr
-simplifyExpr' = flip runReader 0 . simplifyExpr
+modToExpr :: Module -> S.Expr
+modToExpr Module{..} =
+  S.Let (imports <> moduleBindings) $ S.Record $ (, Nothing) <$> moduleExports
+  where
+    imports = importBindings =<< moduleImports
+    importBindings Import{..} =
+      fromMaybe [] importIdents <&> \i -> (i, S.RecordField (S.Var importModule) i)
 
-simplify :: S.BindingGroup -> Expr
-simplify bs = simplifyExpr' $ S.Let bs $ S.Var "main"
+modulesToExpr :: Bool -> [Module] -> S.Expr
+modulesToExpr singleFile ms = S.Let (toBinding <$> ms) $ S.RecordField (S.Var mainMod) "main"
+  where
+    toBinding m@Module{..} = (moduleName, modToExpr m)
+    mainMod
+      | singleFile = moduleName $ last ms
+      | otherwise = "Main"
+
+simplify :: Bool -> [Module] -> Expr
+simplify = flip runReader 0 . simplifyExpr ... modulesToExpr

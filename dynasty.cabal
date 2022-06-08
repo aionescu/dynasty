@@ -41,7 +41,6 @@ executable dynasty
     , process ^>= 1.6.14
     , scientific ^>= 0.3.7
     , text ^>= 2
-    , vector ^>= 0.12.3
 
   ghc-options:
     -threaded
@@ -83,7 +82,6 @@ executable dynasty
     MultiParamTypeClasses
     MultiWayIf
     NamedFieldPuns
-    OverloadedLists
     OverloadedStrings
     PatternSynonyms
     RankNTypes

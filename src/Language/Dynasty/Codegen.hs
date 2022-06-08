@@ -1,9 +1,8 @@
 module Language.Dynasty.Codegen(compile) where
 
+import Data.Foldable(fold)
 import Data.Text(Text)
 import Data.Text qualified as T
-import Data.Vector(Vector)
-import Data.Vector qualified as V
 
 import Language.Dynasty.Syntax(Ident, Num'(..))
 import Language.Dynasty.Parser(varOpChars)
@@ -42,7 +41,7 @@ ident i
   | T.head i == '_' || T.head i == '$' = i
   | otherwise = "_" <> T.replace "'" "_" i
 
-compileLet :: Vector (Bool, Vector (Ident, Expr)) -> Expr -> JS
+compileLet :: [(Bool, [(Ident, Expr)])] -> Expr -> JS
 compileLet gs e = "(()=>{" <> foldMap bindingGroup gs <> "return " <> compileExpr e <> ";})()"
   where
     bindingGroup (False, bs) = foldMap (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
@@ -62,14 +61,13 @@ check e (IsCtor c n) =
   e <> ".$===" <> showT c <> "&&" <> e <> ".$" <> showT (pred n) <> "&&!" <> e <> ".$" <> showT n
 check e (HasField f) = e <> "." <> ident f
 
-compileCase :: Vector Branch -> JS
+compileCase :: [Branch] -> JS
 compileCase = foldr branch "(()=>{throw 'Incomplete pattern match';})()"
   where
-    branch (cs, e) r
-      | V.null cs = compileExpr e
-      | otherwise = cond <> "?" <> compileExpr e <> ":" <> r
+    branch ([], e) _ = compileExpr e
+    branch (cs, e) r = cond <> "?" <> compileExpr e <> ":" <> r
       where
-        cond = T.intercalate "&&" $ V.toList $ (\(e', c) -> check (compileExpr e') c) <$> cs
+        cond = T.intercalate "&&" $ (\(e', c) -> check (compileExpr e') c) <$> cs
 
 compileExpr :: Expr -> JS
 compileExpr (NumLit NaN) = "NaN"
@@ -79,10 +77,10 @@ compileExpr (NumLit (Num n)) = showT n
 compileExpr (StrLit s) = showT s
 compileExpr (Record fs) = "{" <> fields <> "}"
   where
-    fields = T.intercalate "," $ V.toList $ V.map (\(i, e) -> ident i <> ":" <> thunk e) fs
+    fields = T.intercalate "," $ (\(i, e) -> ident i <> ":" <> thunk e) <$> fs
 compileExpr (Ctor c es) = "{$:" <> showT c <> fields <> "}"
   where
-    fields = V.foldMap id $ V.imap (\i e -> ",$" <> showT i <> ":" <> thunk e) es
+    fields = fold $ imap (\i e -> ",$" <> showT i <> ":" <> thunk e) es
 compileExpr (Var i) = "e(" <> ident i <> ")"
 compileExpr (Field e i) = "e(" <> compileExpr e <> "." <> ident i <> ")"
 compileExpr (Case bs) = compileCase bs

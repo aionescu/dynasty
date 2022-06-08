@@ -9,11 +9,11 @@ import Data.Functor(($>))
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
-import Data.Vector(Vector)
-import Data.Vector qualified as V
 
 import Language.Dynasty.Syntax
 import Utils
+import Data.Containers.ListUtils (nubOrdOn)
+import Data.Maybe (mapMaybe)
 
 -- This module validates the Syntax before it is simplified into Core.
 -- Currently it checks for:
@@ -22,8 +22,8 @@ import Utils
 -- * Duplicate variables within the same pattern
 -- * Duplicate bindings in let expressions
 
-uniqueIdents :: Vector (Ident, a) -> Bool
-uniqueIdents v = V.length (V.uniq $ V.map fst v) == V.length v
+uniqueIdents :: [(Ident, a)] -> Bool
+uniqueIdents l = length (nubOrdOn fst l) == length l
 
 type Env = Set Ident
 
@@ -69,7 +69,7 @@ validateExpr (List es) = traverse_ validateExpr es
 
 validateExpr (Record es)
   | not $ uniqueIdents es = throwError "Duplicate field in record expression"
-  | otherwise = traverse_ validateExpr (V.catMaybes $ V.map snd es)
+  | otherwise = traverse_ validateExpr $ mapMaybe snd es
 
 validateExpr (Var v) = asks (S.member v) >>= \case
   False -> throwError $ "Undefined variable " <> showT v
@@ -86,8 +86,8 @@ validateExpr (App (Fn f) es) = validateExpr f *> traverse_ validateExpr es
 validateExpr (Let bs e)
   | not $ uniqueIdents bs = throwError "Duplicate binding in let expression"
   | otherwise =
-      withVars (S.fromList $ V.toList $ V.map fst bs) $
-        traverse_ validateExpr (V.map snd bs) *> validateExpr e
+      withVars (S.fromList $ fst <$> bs) $
+        traverse_ (validateExpr . snd) bs *> validateExpr e
 
 validate :: MonadError Text m => Env -> BindingGroup -> m BindingGroup
 validate prelude bs =

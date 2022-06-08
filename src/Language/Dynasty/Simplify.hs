@@ -13,13 +13,11 @@ import Data.Set qualified as S'
 import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
-import Data.Vector(Vector)
-import Data.Vector qualified as V
 
 import Language.Dynasty.Syntax(Ident)
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Core
-import Utils(showT)
+import Utils(showT, imap)
 import Data.Functor ((<&>))
 
 -- This module converts the `Syntax` AST into `Core`.
@@ -30,7 +28,7 @@ import Data.Functor ((<&>))
 -- * Lambdas have exactly one identifier argument in Core. Lambdas with pattern arguments and
 --   LambdaCase are simplified into a series of Lambdas and Cases.
 
-simplifyPat :: Expr -> S.Pat -> (Vector (Expr, Check), Vector (Expr, Ident))
+simplifyPat :: Expr -> S.Pat -> ([(Expr, Check)], [(Expr, Ident)])
 simplifyPat e = \case
   S.NumLit n -> ck e $ IsNum n
   S.StrLit s -> ck e $ IsStr s
@@ -40,8 +38,8 @@ simplifyPat e = \case
     ck e (HasField f) <#> let e' = Field e f in maybe (asg e' f) (simplifyPat e') p
   S.Var v -> asg e v
   S.App (S.Ctor c) ps ->
-    ck e (IsCtor c $ V.length ps)
-    <#> combine (V.imap (\i -> simplifyPat (Field e $ "$" <> showT i)) ps)
+    ck e (IsCtor c $ length ps)
+    <#> combine (imap (\i -> simplifyPat (Field e $ "$" <> showT i)) ps)
   S.Wildcard -> ([], [])
   S.As p v -> simplifyPat e p <#> asg e v
 
@@ -56,24 +54,23 @@ simplifyPat e = \case
     (c1, a1) <#> (c2, a2) = (c1 <> c2, a1 <> a2)
     infixr 6 <#>
 
-simplifyCase :: Ident -> Vector (S.Pat, Expr) -> Expr
+simplifyCase :: Ident -> [(S.Pat, Expr)] -> Expr
 simplifyCase v bs = Case $ bs <&> \(p, e) ->
   let (cs, as) = simplifyPat (Var v) p
   in (cs, Let [(False, swap <$> as)] e)
 
-simplifyLam :: MonadReader Int m => Vector S.Pat -> S.Expr -> m Expr
-simplifyLam vs e =
-  case V.uncons vs of
-    Nothing -> simplifyExpr e
-    Just (S.Wildcard, ps) -> withVar \v -> Lambda v <$> simplifyLam ps e
-    Just (S.Var v, ps) -> Lambda v <$> simplifyLam ps e
-    Just (p, ps) -> withVar \v ->
-      Lambda v <$> simplifyExpr (S.Case (S.Var v) [(p, S.Lambda ps e)])
+simplifyLam :: MonadReader Int m => [S.Pat] -> S.Expr -> m Expr
+simplifyLam [] e = simplifyExpr e
+simplifyLam (p : ps) e =
+  case p of
+    S.Wildcard -> withVar \v -> Lambda v <$> simplifyLam ps e
+    S.Var v -> Lambda v <$> simplifyLam ps e
+    _ -> withVar \v -> Lambda v <$> simplifyExpr (S.Case (S.Var v) [(p, S.Lambda ps e)])
 
 freeVars :: Expr -> Set Ident
 freeVars NumLit{} = S'.empty
 freeVars StrLit{} = S'.empty
-freeVars (Record fs) = foldMap freeVars $ V.map snd fs
+freeVars (Record fs) = foldMap (freeVars . snd) fs
 freeVars (Ctor _ es) = foldMap freeVars es
 freeVars (Var v) = S'.singleton v
 freeVars (Field e _) = freeVars e
@@ -84,35 +81,35 @@ freeVars (Let bs e) =
   (freeVars e <> foldMap (foldMap (freeVars . snd) . snd) bs)
   S'.\\ foldMap (foldMap (S'.singleton . fst) . snd) bs
 
-depGraph :: Vector (Ident, Expr) -> Vector (Ident, Set Ident)
-depGraph bs = V.map (second $ S'.intersection vars . freeVars) bs
+depGraph :: [(Ident, Expr)] -> [(Ident, Set Ident)]
+depGraph bs = second (S'.intersection vars . freeVars) <$> bs
   where
     vars = foldMap (S'.singleton . fst) bs
 
-getSCCs :: Vector (Ident, Expr) -> (Map Ident Int, Vector (Bool, Set Ident))
+getSCCs :: [(Ident, Expr)] -> (Map Ident Int, [(Bool, Set Ident)])
 getSCCs bs =
   let
     deps = depGraph bs
-    idxs = arrOfVec $ V.map fst deps
+    idxs = arrOfList $ fst <$> deps
     idents = M.fromList $ swap <$> A.assocs idxs
-    graph = arrOfVec $ V.map (map (idents M.!) . S'.toList . snd) deps
+    graph = arrOfList $ fmap (idents M.!) . S'.toList . snd <$> deps
     sccs = G.scc graph
 
-    arrOfVec v = A.listArray (0, V.length v - 1) $ V.toList v
+    arrOfList l = A.listArray (0, length l - 1) l
     setOfTree (Node a ns) = S'.singleton a <> foldMap setOfTree ns
     getIdents t = (isRec, s)
       where
-        isRec = S'.size s > 1 || S'.member m (snd $ deps V.! (idents M.! m))
+        isRec = S'.size s > 1 || S'.member m (snd $ deps !! (idents M.! m))
         m = S'.findMin s
         s = S'.map (idxs A.!) $ setOfTree t
   in
-    (idents, V.fromList $ getIdents <$> sccs)
+    (idents, getIdents <$> sccs)
 
-simplifyLet :: Vector (Ident, Expr) -> Expr -> Expr
+simplifyLet :: [(Ident, Expr)] -> Expr -> Expr
 simplifyLet bs = Let (convert <$> sccs)
   where
     (idents, sccs) = getSCCs bs
-    convert (r, scc) = (r, V.fromList $ (\i -> bs V.! (idents M.! i)) <$> S'.toList scc)
+    convert (r, scc) = (r, (bs !!) . (idents M.!) <$> S'.toList scc)
 
 withVar :: MonadReader Int m => (Ident -> m a) -> m a
 withVar f = do

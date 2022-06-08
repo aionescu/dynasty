@@ -13,3 +13,9 @@ readT = readMaybe . T.unpack
 (...) :: (c -> d) -> (a -> b -> c) -> (a -> b -> d)
 (...) = (.) . (.)
 infixr 9 ...
+
+imap :: (Int -> a -> b) -> [a] -> [b]
+imap f = go 0
+  where
+    go _ [] = []
+    go i (a : as) = f i a : go (succ i) as

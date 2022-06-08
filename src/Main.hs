@@ -1,6 +1,5 @@
 module Main(main) where
 
-import Data.Function((&))
 import Data.Functor((<&>))
 import Data.Set(Set)
 import Data.Set qualified as S
@@ -28,35 +27,27 @@ preludeEnv =
   , "getChar", "putChar" , "readFile"
   ]
 
-getCode :: FilePath -> IO Text
-getCode "-" = T.getContents
-getCode path = T.readFile path
-
-pipeline :: Text -> Text -> Either Text Text
-pipeline prelude code =
-  code
-  & parse
+pipeline :: Text -> FilePath -> Text -> Either Text Text
+pipeline prelude path code =
+  parse path code
   >>= \syn ->
-    validate @(Either Text) preludeEnv syn
+    validate preludeEnv syn
     <&> simplify
     <&> compile prelude
 
 writeJS :: Opts -> Text -> IO ()
 writeJS Opts{..} code = do
-  case optsPath of
-    "-" -> T.putStrLn code
-    _ -> T.writeFile optsOutPath code
-
+  T.writeFile optsOutPath code
   when optsRun do
     system ("node --trace-uncaught " <> show optsOutPath <> foldMap ((" " <>) . show) optsArgs)
       >>= exitWith
 
 run :: Opts -> IO ()
 run opts@Opts{..} = do
-  code <- getCode optsPath
   prelude <- T.readFile "vendored/prelude.js"
+  code <- T.readFile optsPath
 
-  case pipeline prelude code of
+  case pipeline prelude optsPath code of
     Left err -> T.putStrLn err *> exitFailure
     Right js -> writeJS opts js
 

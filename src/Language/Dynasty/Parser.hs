@@ -8,8 +8,6 @@ import Data.Function(on, (&))
 import Data.Functor((<&>), ($>))
 import Data.Text(Text)
 import Data.Text qualified as T
-import Data.Vector(Vector)
-import Data.Vector qualified as V
 import Data.Void(Void)
 import Text.Megaparsec hiding (parse)
 import Text.Megaparsec.Char
@@ -44,7 +42,7 @@ parens :: Parser a -> Parser a
 parens = btwn "(" ")"
 
 reservedNames :: [Text]
-reservedNames = ["import", "case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
+reservedNames = ["case", "of", "as", "let", "and", "in", "NaN", "Infinity"]
 
 reservedOps :: [Text]
 reservedOps = ["=", "\\", "->", "|"]
@@ -109,23 +107,23 @@ tuple :: Parser (Syn k) -> Parser (Syn k)
 tuple term = parens $ mkTup <$> (try term `sepBy` symbol ",")
   where
     mkTup [a] = a
-    mkTup l = Tuple $ V.fromList l
+    mkTup l = Tuple l
 
 record :: Parser (Syn k) -> Parser (Syn k)
 record term =
-  Record . V.fromList <$> btwn "{" "}" (field `sepBy` symbol ",") <?> "Record literal"
+  Record <$> btwn "{" "}" (field `sepBy` symbol ",") <?> "Record literal"
   where
     field = (,) <$> varIdent <*> optional (symbol "=" *> term)
 
 list :: Parser (Syn k) -> Parser (Syn k)
-list term = List . V.fromList <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
+list term = List <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
 
 signed :: Num a => Parser (a -> a)
 signed = (char '-' $> negate) <|> pure id
 
 numLit :: Parser (Syn a)
 numLit =
-  choice @[]
+  choice
   [ NumLit NaN <$ symbol "NaN"
   , NumLit Inf <$ symbol "Infinity"
   , NumLit NegInf <$ symbol "-Infinity"
@@ -152,10 +150,10 @@ caseBranch :: Parser (Pat, Expr)
 caseBranch = symbol "|" *> ((,) <$> (pat <* symbol "->" ) <*> expr)
 
 lamCase :: Parser Expr
-lamCase = symbol "case" *> many caseBranch <&> LambdaCase . V.fromList
+lamCase = symbol "case" *> (LambdaCase <$> many caseBranch)
 
 lamVars :: Parser Expr
-lamVars = Lambda . V.fromList <$> (some patSimple <* symbol ".") <*> expr
+lamVars = Lambda <$> (some patSimple <* symbol ".") <*> expr
 
 lam :: Parser Expr
 lam = symbol "\\" *> (try lamCase <|> lamVars)
@@ -163,10 +161,10 @@ lam = symbol "\\" *> (try lamCase <|> lamVars)
 binding :: Parser (Ident, Expr)
 binding = (,) <$> varIdent <*> (args <*> (symbol "=" *> expr))
   where
-    args = (Lambda . V.fromList <$> some patSimple) <|> pure id
+    args = (Lambda <$> some patSimple) <|> pure id
 
 bindingGroup :: Parser BindingGroup
-bindingGroup = V.fromList <$> try binding `sepBy1` symbol "and"
+bindingGroup = try binding `sepBy1` symbol "and"
 
 let' :: Parser Expr
 let' =
@@ -175,11 +173,11 @@ let' =
   <*> (symbol "in" *> expr)
 
 case' :: Parser Expr
-case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> (V.fromList <$> many caseBranch)
+case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> many caseBranch
 
 exprSimple :: Parser Expr
 exprSimple =
-  choice @[]
+  choice
   [ctorSimple, var, tuple expr, let', lam, case', record expr, list expr, simpleLit]
   <?> "Expression"
 
@@ -188,14 +186,14 @@ wildcard = symbol "_" $> Wildcard
 
 patSimple :: Parser Pat
 patSimple =
-  choice @[]
+  choice
   [ctorSimple, var, tuple pat, record pat, list pat, simpleLit, wildcard]
   <?> "Pattern"
 
-ctorHead :: Parser (Vector (Syn a) -> Syn a)
+ctorHead :: Parser ([Syn a] -> Syn a)
 ctorHead = App . Ctor <$> ctorIdent
 
-fnHead :: Parser (Vector Expr -> Expr)
+fnHead :: Parser ([Expr] -> Expr)
 fnHead = App . Fn <$> exprField
 
 asPat :: Parser Pat
@@ -205,7 +203,7 @@ asPat = as <$> patSimple <*> optional (try $ symbol "as" *> varIdent)
     as p (Just v) = As p v
 
 patCtorApp :: Parser Pat
-patCtorApp = try (ctorHead <*> (V.fromList <$> some asPat)) <|> asPat
+patCtorApp = try (ctorHead <*> some asPat) <|> asPat
 
 patOps :: [[Operator Parser Pat]]
 patOps =
@@ -221,11 +219,11 @@ exprField = foldl' (&) <$> exprSimple <*> many (try $ char '.' *> field)
   where
     field = (flip CtorField <$> lexeme L.decimal) <|> (flip RecordField <$> varIdent)
 
-appHead :: Parser (Vector Expr -> Expr)
+appHead :: Parser ([Expr] -> Expr)
 appHead = try ctorHead <|> fnHead
 
 exprApp :: Parser Expr
-exprApp = appHead <*> (V.fromList <$> many exprField)
+exprApp = appHead <*> many exprField
 
 exprOps :: [[Operator Parser Expr]]
 exprOps =
@@ -248,5 +246,5 @@ expr = makeExprParser exprApp exprOps
 program :: Parser BindingGroup
 program = optional shebang *> optional sc *> bindingGroup <* eof
 
-parse :: MonadError Text m => Text -> m BindingGroup
-parse = liftEither . first (T.pack . errorBundlePretty) . runParser program ""
+parse :: MonadError Text m => FilePath -> Text -> m BindingGroup
+parse path = liftEither . first (T.pack . errorBundlePretty) . runParser program path

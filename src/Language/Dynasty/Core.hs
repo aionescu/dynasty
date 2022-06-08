@@ -3,7 +3,6 @@
 module Language.Dynasty.Core where
 
 import Data.Text(Text)
-import Data.Vector(Vector)
 
 import Language.Dynasty.Syntax(Ident, Num')
 
@@ -14,17 +13,17 @@ data Check
   | HasField Ident
   deriving stock Show
 
-type Branch = (Vector (Expr, Check), Expr)
+type Branch = ([(Expr, Check)], Expr)
 
 data Expr
   = NumLit Num'
   | StrLit Text
-  | Record (Vector (Ident, Expr))
-  | Ctor Ident (Vector Expr)
+  | Record [(Ident, Expr)]
+  | Ctor Ident [Expr]
   | Var Ident
   | Field Expr Ident
-  | Case (Vector Branch)
+  | Case [Branch]
   | Lambda Ident Expr
   | App Expr Expr
-  | Let (Vector (Bool, Vector (Ident, Expr))) Expr
+  | Let [(Bool, [(Ident, Expr)])] Expr
   deriving stock Show

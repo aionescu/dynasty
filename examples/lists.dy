@@ -16,24 +16,20 @@ main =
         (a :: (a - 1 .. b)))
   in
 
-  print (1 .. 15) *>
-  print (15 .. 1) *>
-  print (-5 .. 5) *>
-
   let map f = \case
     | [] -> []
     | a :: as' -> f a :: map f as'
   in
 
-  print (map ((+) 2) $ 1 .. 10) *>
-
   let fix f = let x = f x in x in
-
-  print (take 20 $ fix \a. 1 :: a) *>
 
   -- Mutual recursion
   let b = 1 :: c
   and c = 2 :: b
-  in
-
-  print (take 20 b)
+  in do
+    print (1 .. 15) then
+    print (15 .. 1) then
+    print (-5 .. 5) then
+    print (map ((+) 2) $ 1 .. 10) then
+    print (take 20 $ fix \a -> 1 :: a) then
+    print (take 20 b)

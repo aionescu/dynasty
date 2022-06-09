@@ -57,6 +57,11 @@ withPatVars p m = do
 validateBranch :: (MonadError Text m, MonadReader Env m) => Pat -> Expr -> m ()
 validateBranch p e = withPatVars p $ validateExpr e
 
+validateDo :: (MonadError Text m, MonadReader Env m) => [(Maybe Ident, Expr)] -> Expr -> m ()
+validateDo [] e = validateExpr e
+validateDo ((Nothing, e) : es) e' = validateExpr e *> validateDo es e'
+validateDo ((Just v, e) : es) e' = validateExpr e *> withVars (S.singleton v) (validateDo es e')
+
 withVars :: (MonadError Text m, MonadReader Env m) => Env -> m a -> m a
 withVars vs = local (<> vs)
 
@@ -79,6 +84,7 @@ validateExpr (LambdaCase bs) = traverse_ (uncurry validateBranch) bs
 validateExpr (App (Ctor _) es) = traverse_ validateExpr es
 validateExpr (App (Fn f) es) = validateExpr f *> traverse_ validateExpr es
 validateExpr (Let bs e) = withBindingGroup bs $ validateExpr e
+validateExpr (Do stmts e) = validateDo stmts e
 validateExpr (UnsafeJS _ vs _) =
   ask >>= \env ->
     unless (all (`elem` env) vs) do

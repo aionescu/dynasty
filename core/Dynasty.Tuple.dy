@@ -1,0 +1,10 @@
+module Dynasty.Tuple
+
+swap (a, b) = (b, a) and
+
+fst (a, _) = a and
+snd (_, b) = b and
+
+first f (a, b) = (f a, b) and
+second f (a, b) = (a, f b) and
+bimap f g (a, b) = (f a, g b)

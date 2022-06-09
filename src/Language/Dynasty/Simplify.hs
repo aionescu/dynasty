@@ -135,6 +135,10 @@ simplifyExpr (S.App (S.Fn f) es) = foldl' App <$> simplifyExpr f <*> traverse si
 simplifyExpr (S.Let [] e) = simplifyExpr e
 simplifyExpr (S.Let bs e) = simplifyLet <$> simplifyGroup bs <*> simplifyExpr e
 simplifyExpr (S.UnsafeJS whnf vs js) = pure $ UnsafeJS whnf vs js
+simplifyExpr (S.Do stmts e) = simplifyExpr $ foldr bind' e stmts
+  where
+    bind' (Nothing, a) e' = S.App (S.Fn $ S.Var ">>=") [a, S.Lambda [S.Wildcard] e']
+    bind' (Just i, a) e' = S.App (S.Fn $ S.Var ">>=") [a, S.Lambda [S.Var i] e']
 
 simplifyGroup :: (MonadReader Int m, Traversable f, Traversable t) => f (t S.Expr) -> m (f (t Expr))
 simplifyGroup = traverse (traverse simplifyExpr)
@@ -148,9 +152,12 @@ modToExpr Module{..} =
       fromMaybe [] importIdents <&> \i -> (i, S.RecordField (S.Var importModule) i)
 
 modulesToExpr :: Bool -> [Module] -> S.Expr
-modulesToExpr singleFile ms = S.Let (toBinding <$> ms) $ S.RecordField (S.Var mainMod) "main"
+modulesToExpr singleFile ms =
+  S.Let (toBinding <$> filter ((`elem` imported) . moduleName) ms)
+  $ S.RecordField (S.Var mainMod) "main"
   where
     toBinding m@Module{..} = (moduleName, modToExpr m)
+    imported = S'.fromList $ mainMod : ((importModule <$>) . moduleImports =<< ms)
     mainMod
       | singleFile = moduleName $ last ms
       | otherwise = "Main"

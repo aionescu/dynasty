@@ -1,0 +1,8 @@
+module Dynasty.Function
+
+flip f a b = f b a and
+curry f a b = f (a, b) and
+uncurry f (a, b) = f a b and
+
+fix f = let x = f x in x and
+iterate f x = x :: iterate f (f x)

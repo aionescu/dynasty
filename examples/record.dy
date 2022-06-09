@@ -14,6 +14,6 @@ a' =
   | { a, b, c, d, e } as r -> { r, fs = (a, b, c, d, e) }
 and
 
-main =
-  print p' *>
+main = do
+  print p' then
   print a'

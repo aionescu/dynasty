@@ -49,10 +49,11 @@ reservedNames =
   , "case", "of", "as"
   , "let", "and", "in"
   , "NaN", "Infinity"
+  , "do", "then"
   ]
 
 reservedOps :: [Text]
-reservedOps = ["=", "\\", "->", "|"]
+reservedOps = ["=", "\\", "->", "<-", "|"]
 
 ident :: Parser Char -> Parser Text
 ident fstChar =
@@ -160,7 +161,7 @@ lamCase :: Parser Expr
 lamCase = symbol "case" *> (LambdaCase <$> many caseBranch)
 
 lamVars :: Parser Expr
-lamVars = Lambda <$> (some patSimple <* symbol ".") <*> expr
+lamVars = Lambda <$> (some patSimple <* symbol "->") <*> expr
 
 lam :: Parser Expr
 lam = symbol "\\" *> (try lamCase <|> lamVars)
@@ -187,10 +188,15 @@ unsafeJS = withWhnf <*> (btwn "[" "]" (varIdent `sepBy` symbol ",") <|> pure [])
   where
     withWhnf = UnsafeJS <$> (symbol "unsafejswhnf" $> True <|> symbol "unsafejs" $> False)
 
+do' :: Parser Expr
+do' = Do <$> (symbol "do" *> some (try $ stmt <* symbol "then")) <*> expr
+  where
+    stmt = (,) <$> optional (try $ varIdent <* symbol "<-") <*> expr
+
 exprSimple :: Parser Expr
 exprSimple =
   choice
-  [ctorSimple, var, tuple expr, let', lam, case', unsafeJS, record expr, list expr, simpleLit]
+  [ctorSimple, var, tuple expr, let', lam, case', unsafeJS, do', record expr, list expr, simpleLit]
   <?> "Expression"
 
 wildcard :: Parser Pat

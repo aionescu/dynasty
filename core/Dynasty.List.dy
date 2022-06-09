@@ -1,0 +1,30 @@
+module Dynasty.List
+
+foldr f z = \case
+  | [] -> z
+  | x :: xs -> f x $ foldr f z xs
+and
+
+foldl f z = \case
+  | [] -> z
+  | x :: xs -> foldl f (f z x) xs
+and
+
+map f = \case
+  | [] -> []
+  | x :: xs -> f x :: map f xs
+and
+
+filter f = \case
+  | [] -> []
+  | x :: xs ->
+      case f x of
+      | True -> x :: filter f xs
+      | False -> filter f xs
+and
+
+take n l =
+  case (n, l) of
+  | (0, _) -> []
+  | (_, []) -> []
+  | (n, x :: xs) -> x :: take (n - 1) xs

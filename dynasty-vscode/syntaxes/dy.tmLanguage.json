@@ -12,7 +12,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.dy",
-				"match": "\\b(unsafejs|unsafejswhnf|module|import|case|of|as|let|and|in)\\b"
+				"match": "\\b(unsafejs|unsafejswhnf|module|import|case|of|as|let|and|in|do|then)\\b"
 			}]
     },
     "numbers": {

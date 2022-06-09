@@ -60,7 +60,7 @@ evalOp op ({ left, crr, right } as tape) =
   | Decr -> pure { left, crr = wrap (crr - 1), right }
   | MovL -> pure { left = tail left, crr = head left, right = crr :: right }
   | MovR -> pure { left = crr :: left, crr = head right, right = tail right }
-  | Read -> getChar >>= \c. pure { left, crr = toCharCode c, right }
+  | Read -> getChar >>= \c -> pure { left, crr = toCharCode c, right }
   | Write -> putChar (fromCharCode crr) *> pure tape
   | Loop ops ->
       case crr of

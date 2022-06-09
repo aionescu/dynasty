@@ -2,15 +2,15 @@ module Cont
 
 -- Implementing a Haskell-style ContT monad
 
-return a = \k. k a and
+return a = \k -> k a and
 
-(<$>) f k = \k'. k (k' . f) and
+(<$>) f k = \k' -> k (k' . f) and
 
-(<*>) kf ka = \kb. kf \f. ka (kb . f) and
+(<*>) kf ka = \kb -> kf \f -> ka (kb . f) and
 
-(>>>=) ka f = \kb. ka \a. f a kb and
+(>>>=) ka f = \kb -> ka \a -> f a kb and
 
-callCC f = \k. f (\a. \_. k a) k and
+callCC f = \k -> f (\a -> \_ -> k a) k and
 
 liftIO m = (>>=) m and
 
@@ -23,14 +23,14 @@ f x = return (x + 1) and
 g x = return (x * 2) and
 
 h x =
-  (callCC \exit.
+  (callCC \exit ->
     case x of
     | 0 -> exit -1
     | _ ->
-        f x >>>= \y.
-          g y >>>= \z.
+        f x >>>= \y ->
+          g y >>>= \z ->
             return (z * z)
-  ) >>>= \r. liftIO (print (r, r))
+  ) >>>= \r -> liftIO (print (r, r))
 and
 
 main = run (h 3) pure

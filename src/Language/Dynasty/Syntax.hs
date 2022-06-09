@@ -31,6 +31,7 @@ data Syn :: SynKind -> * where
   List :: [Syn a] -> Syn a
   Record :: [(Ident, Maybe (Syn a))] -> Syn a
   Var :: Ident -> Syn a
+
   RecordField :: Syn 'E -> Ident -> Syn 'E
   CtorField :: Syn 'E -> Idx -> Syn 'E
   Case :: Syn 'E -> [(Syn 'P, Syn 'E)] -> Syn 'E
@@ -38,6 +39,7 @@ data Syn :: SynKind -> * where
   LambdaCase :: [(Syn 'P, Syn 'E)] -> Syn 'E
   App :: AppHead a -> [Syn a] -> Syn a
   Let :: BindingGroup -> Syn 'E -> Syn 'E
+  Do :: [(Maybe Ident, Syn 'E)] -> Syn 'E -> Syn 'E
   UnsafeJS :: Bool -> [Ident] -> Text -> Syn 'E
 
   Wildcard :: Syn 'P

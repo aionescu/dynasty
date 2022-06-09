@@ -13,7 +13,7 @@ length a = unsafejs "e(_a).length" and
 
 pure a = unsafejs "({r:()=>e(_a)})" and
 (>>=) a f = unsafejs "({r:()=>e(_f)({v:e(_a).r()}).r()})" and
-(*>) a b = a >>= \_. b and
+(*>) a b = a >>= \_ -> b and
 
 show a = unsafejs "show(e(_a),false)" and
 putStrLn a = unsafejs "({r:()=>{console.log(e(_a));return{$:'Tuple'};}})" and

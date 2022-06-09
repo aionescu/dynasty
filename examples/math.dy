@@ -10,11 +10,11 @@ isNaN = \case
   | _ -> False
 and
 
-main =
-  print (2 + 3 == 5) *>
-  print (2 * 3 == 6) *>
-  print (isNaN $ 2 + NaN) *>
-  print (not $ NaN == NaN) *>
-  print (Infinity * -1 == -Infinity) *>
-  print (1 / 0 == Infinity) *>
+main = do
+  print (2 + 3 == 5) then
+  print (2 * 3 == 6) then
+  print (isNaN $ 2 + NaN) then
+  print (not $ NaN == NaN) then
+  print (Infinity * -1 == -Infinity) then
+  print (1 / 0 == Infinity) then
   print (-1 / 0 == -Infinity)

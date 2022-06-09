@@ -1,0 +1,59 @@
+module Main
+
+import Dynasty.DOM
+import Dynasty.List
+import Dynasty.String
+
+digitBtn n = do
+  r <- byId "result" then
+  el <- byId ("b" + show n) then
+  onClick el \_ -> updateValue r \v -> v + show n
+and
+
+opBtn name char = do
+  r <- byId "result" then
+  el <- byId ("b" + name) then
+  onClick el \_ -> updateValue r \v -> v + char
+and
+
+delBtn = do
+  r <- byId "result" then
+  el <- byId ("bdel") then
+  onClick el \_ -> updateValue r pop
+and
+
+setMsg = do
+  msg <- byId "msg" then
+  setInner msg "Error"
+and
+
+clearMsg = do
+  msg <- byId "msg" then
+  setInner msg ""
+and
+
+compute = do
+  r <- byId "result" then
+  v <- value r then
+
+  case attempt (evalJS v) of
+  | Nothing -> setMsg
+  | n -> setValue r n *> clearMsg
+and
+
+computeBtn = do
+  r <- byId "result" then
+  msg <- byId "msg" then
+  el <- byId ("beq") then
+  onClick el \_ -> compute
+and
+
+main = do
+  traverse digitBtn (0 .. 9) then
+  opBtn "add" "+" then
+  opBtn "sub" "-" then
+  opBtn "mul" "*" then
+  opBtn "div" "/" then
+  opBtn "dot" "." then
+  delBtn then
+  computeBtn

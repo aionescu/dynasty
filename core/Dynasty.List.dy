@@ -28,3 +28,16 @@ take n l =
   | (0, _) -> []
   | (_, []) -> []
   | (n, x :: xs) -> x :: take (n - 1) xs
+and
+
+traverse f = \case
+  | [] -> pure ()
+  | x :: xs -> f x *> traverse f xs
+and
+
+(..) a b =
+  if (a == b)
+    [a]
+    (if (a < b)
+      (a :: (a + 1 .. b))
+      (a :: (a - 1 .. b)))

@@ -8,38 +8,26 @@ Dynasty is a dynamically-typed, lazily evaluated, purely functional programming 
 
 ## Examples
 
-You can find some Dynasty programs in the [examples](examples) folder.
+You can find some Dynasty programs in the [examples](examples) folder, and the standard library (called `Core`) lives in the [core](core) folder.
 
-The most interesting one is the [Brainfuck interpreter](examples/bf.dy).
-
-## Building & running
+## Building & running the compiler
 
 ### Prerequisites
 
-* GHC (>= 9.0.2)
+* GHC (>= 8.10)
 * cabal (>= 3.6)
 
 (Can be installed via [ghcup](https://www.haskell.org/ghcup/))
 
-### Build the interpreter
+To compile Dyansty programs, use the following command:
 
 ```sh
-cabal build
+cabal run . -- <target>
 ```
 
-### Run the interpreter
+The first invocation may take a while, since it will also build the compiler's dependencies.
 
-```sh
-cabal run . <script file> <script args>
-```
-
-If not already built, `cabal run` will also build the project.
-
-e.g.
-
-```sh
-cabal run . examples/fac.dy
-```
+To run the resulting JavaScript, you can include it in a `<script>` tag inside a HTML document to load it in the browser, or run it with [Node.js](https://nodejs.org/en/) or [Deno](https://deno.land/).
 
 ## License
 

@@ -48,7 +48,6 @@ executable dynasty
     -with-rtsopts=-N
     -Wall
     -Wcompat
-    -Wno-star-is-type
     -Wincomplete-uni-patterns
     -Wprepositive-qualified-module
     -Wmissing-deriving-strategies

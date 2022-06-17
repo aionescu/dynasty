@@ -18,13 +18,13 @@ data Num'
   | Num Scientific
   deriving stock Show
 
-data AppHead :: SynKind -> * where
+data AppHead a where
   Ctor :: Ident -> AppHead a
   Fn :: Syn 'E -> AppHead 'E
 
 deriving stock instance Show (AppHead a)
 
-data Syn :: SynKind -> * where
+data Syn a where
   NumLit :: Num' -> Syn a
   StrLit :: Text -> Syn a
   Tuple :: [Syn a] -> Syn a

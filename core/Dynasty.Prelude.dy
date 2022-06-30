@@ -23,7 +23,7 @@ throw a = unsafejs "{throw e(_a).toString()}" and
 try a h = unsafejs "{try{return e(_a);}catch(c){return e(_h)({v:c.toString()});}}" and
 tryIO a h = unsafejs "({r:()=>{try{return e(_a).r();}catch(c){return e(e(_h)({v:c.toString()})).r()}}})" and
 
-attempt a = unsafejs "{try{return e(_a);}catch(c){return{$:'Nothing'}}}" and
+attempt a = unsafejs "{try{e(_a);return{$:'Just',$0:_a};}catch(c){return{$:'Nothing'}}}" and
 
 fromCharCode a = unsafejs "String.fromCharCode(e(_a))" and
 toCharCode a = unsafejs "e(_a).charCodeAt(0)" and

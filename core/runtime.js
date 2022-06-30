@@ -1,5 +1,5 @@
 const fs=typeof require!=="undefined"&&require("fs");
-const bh=()=>{throw "Black hole"};
+const bh=()=>{throw "<Self-recursive thunk>"};
 const e=t=>{if(t.f){const f=t.f;t.f=bh;t.v=f();t.f=undefined;}return t.v;};
 const show=(a,p)=>{
   let r="",q=false;

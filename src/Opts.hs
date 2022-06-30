@@ -1,6 +1,8 @@
 module Opts(Opts(..), getOpts) where
 
 import Options.Applicative
+import System.Directory(getHomeDirectory)
+import System.FilePath((</>))
 
 data Opts =
   Opts
@@ -9,18 +11,18 @@ data Opts =
   , optsPath :: FilePath
   }
 
-optsParser :: Parser Opts
-optsParser =
+optsParser :: FilePath -> Parser Opts
+optsParser home =
   Opts
   <$> strOption (short 'o' <> long "out-path" <> metavar "OUT_PATH" <> value "" <> help "The name of the output file.")
-  <*> strOption (long "core-dir" <> metavar "CORE_DIR" <> value "core" <> help "Specify an alternative directory for the Core modules.")
-  <*> strArgument (metavar "PATH" <> help "The directory to compile.")
+  <*> strOption (long "core-dir" <> metavar "CORE_DIR" <> value (home </> ".dynasty/core") <> help "Specify an alternative directory for the Core modules.")
+  <*> strArgument (metavar "PATH" <> value "." <> help "The directory to compile.")
 
-fullParser :: ParserInfo Opts
-fullParser =
+fullParser :: FilePath -> ParserInfo Opts
+fullParser home =
   info
-    (helper <*> optsParser)
-    (fullDesc <> progDesc "Interprets Dynasty source files." <> header "Dynasty")
+    (helper <*> optsParser home)
+    (fullDesc <> progDesc "Compiles Dynasty source files." <> header "Dynasty")
 
 getOpts :: IO Opts
-getOpts = execParser fullParser
+getOpts = execParser . fullParser =<< getHomeDirectory

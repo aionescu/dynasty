@@ -19,7 +19,9 @@ You can find some Dynasty programs in the [examples](examples) folder, and the s
 
 (Can be installed via [ghcup](https://www.haskell.org/ghcup/))
 
-To compile Dyansty programs, use the following command:
+Before trying to run Dynasty programs, it is recommended to execute the `symlink-core.sh` script to create the `$HOME/.dynasty/core` directory. Otherwise, it is necessary to provide the `--core-dir` argument when invoking the compiler.
+
+To compile Dynasty programs, use the following command:
 
 ```sh
 cabal run . -- <target>
@@ -28,6 +30,10 @@ cabal run . -- <target>
 The first invocation may take a while, since it will also build the compiler's dependencies.
 
 To run the resulting JavaScript, you can include it in a `<script>` tag inside a HTML document to load it in the browser, or run it with [Node.js](https://nodejs.org/en/) or [Deno](https://deno.land/).
+
+## VS Code Extension
+
+To install the VS Code extension, simply run the `install-vscode-ext.sh` script.
 
 ## License
 

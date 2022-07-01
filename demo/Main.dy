@@ -5,32 +5,24 @@ import Dynasty.Function
 import Dynasty.List
 import Dynasty.String
 
-digitBtn n =
+setupBtn id text =
   do   r <- byId "result"
-  then el <- byId ("b" + show n)
-  then onClick el \_ -> updateValue r \v -> v + show n
+  then el <- byId id
+  then onClick el \_ -> updateValue r \v -> v + text
 and
 
-opBtn name char =
-  do   r <- byId "result"
-  then el <- byId ("b" + name)
-  then onClick el \_ -> updateValue r \v -> v + char
-and
+setupDigitBtn digit = setupBtn ("b" + show digit) (show digit) and
+setupSymbolBtn name symbol = setupBtn ("b" + name) symbol and
 
-delBtn =
+setupDelBtn =
   do   r <- byId "result"
   then el <- byId ("bdel")
   then onClick el \_ -> updateValue r pop
 and
 
-setMsg =
+setMsg text =
   do   msg <- byId "msg"
-  then setInner msg "Error"
-and
-
-clearMsg =
-  do   msg <- byId "msg"
-  then setInner msg ""
+  then setInner msg text
 and
 
 compute =
@@ -38,20 +30,18 @@ compute =
   then v <- value r
   then
     case attempt (evalJS v) of
-    | Nothing -> setMsg
-    | Just n -> setValue r n *> clearMsg
+    | Nothing -> setMsg "Error"
+    | Just n -> setValue r n *> setMsg ""
 and
 
-computeBtn =
-  do   r <- byId "result"
-  then msg <- byId "msg"
-  then el <- byId ("beq")
+setupComputeBtn =
+  do   el <- byId ("beq")
   then onClick el \_ -> compute
 and
 
 main =
-  do   traverse digitBtn (0 .. 9)
-  then traverse (uncurry opBtn)
-        [ ("add", "+"), ("sub", "-"), ("mul", "*"), ("div", "/"), ("dot", ".")]
-  then delBtn
-  then computeBtn
+  do   traverse setupDigitBtn (0 .. 9)
+  then traverse (uncurry setupSymbolBtn)
+        [("add", "+"), ("sub", "-"), ("mul", "*"), ("div", "/"), ("dot", ".")]
+  then setupDelBtn
+  then setupComputeBtn

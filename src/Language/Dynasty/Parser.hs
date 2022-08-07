@@ -2,9 +2,11 @@ module Language.Dynasty.Parser(parseModule, varOpChars) where
 
 import Control.Monad.Combinators.Expr(Operator (..), makeExprParser)
 import Data.Bifunctor(first)
+import Data.Containers.ListUtils(nubOrd)
 import Data.Foldable(foldl')
 import Data.Function(on, (&))
 import Data.Functor((<&>), ($>))
+import Data.Maybe(fromMaybe)
 import Data.Text(Text)
 import Data.Text qualified as T
 import Data.Void(Void)
@@ -13,8 +15,6 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Syntax
-import Data.Maybe(fromMaybe)
-import Data.Containers.ListUtils (nubOrd)
 
 type Parser = Parsec Void Text
 

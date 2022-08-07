@@ -1,8 +1,13 @@
 module Main(main) where
 
+import Control.Monad(join)
+import Data.Function((&))
 import Data.Functor((<&>))
 import Data.Text(Text)
 import Data.Text.IO qualified as T
+import System.Directory(listDirectory, doesFileExist)
+import System.Exit(exitFailure)
+import System.FilePath((</>), isExtensionOf)
 import System.IO(BufferMode(NoBuffering), hSetBuffering, stdin, stdout)
 
 import Language.Dynasty.Parser(parseModule)
@@ -10,12 +15,7 @@ import Language.Dynasty.Validate(validate)
 import Language.Dynasty.Simplify(simplify)
 import Language.Dynasty.Codegen(compile)
 import Opts(Opts(..), getOpts)
-import System.Exit(exitFailure)
-import Control.Monad(join)
-import System.Directory (listDirectory, doesFileExist)
-import System.FilePath ((</>), isExtensionOf)
-import Data.Function ((&))
-import Paths_dynasty (getDataDir)
+import Paths_dynasty(getDataDir)
 
 getDyFiles :: FilePath -> IO [FilePath]
 getDyFiles path =

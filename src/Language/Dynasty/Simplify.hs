@@ -4,22 +4,22 @@ import Control.Monad.Reader(MonadReader, ask, local, runReader)
 import Data.Array qualified as A
 import Data.Bifunctor(second)
 import Data.Foldable(foldl', foldrM, find)
+import Data.Functor((<&>))
 import Data.Graph(Tree(..))
 import Data.Graph qualified as G
 import Data.Map.Strict(Map)
 import Data.Map.Strict qualified as M
+import Data.Maybe(fromMaybe, fromJust)
 import Data.Set(Set)
 import Data.Set qualified as S'
 import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
 
-import Language.Dynasty.Syntax(Ident, Module (..), Import (..))
+import Language.Dynasty.Syntax(Ident, Module(..), Import(..))
 import Language.Dynasty.Syntax qualified as S
-import Language.Dynasty.Core
+import Language.Dynasty.Core(Check(..), Expr(..))
 import Utils(showT, imap)
-import Data.Functor ((<&>))
-import Data.Maybe (fromMaybe, fromJust)
 
 simplifyPat :: Expr -> S.Pat -> ([(Expr, Check)], [(Expr, Ident)])
 simplifyPat e = \case

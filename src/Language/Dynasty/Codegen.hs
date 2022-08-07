@@ -1,14 +1,14 @@
 module Language.Dynasty.Codegen(compile) where
 
+import Data.Char(isUpper)
 import Data.Foldable(fold)
 import Data.Text(Text)
 import Data.Text qualified as T
 
 import Language.Dynasty.Syntax(Ident, Num'(..))
 import Language.Dynasty.Parser(varOpChars)
-import Language.Dynasty.Core
-import Utils
-import Data.Char (isUpper)
+import Language.Dynasty.Core(Branch, Check(..), Expr(..))
+import Utils(showT, imap)
 
 type JS = Text
 

@@ -1,22 +1,22 @@
 module Language.Dynasty.Validate(validate) where
 
+import Control.Monad(unless, when)
 import Control.Monad.Except(MonadError, throwError, liftEither, mapError)
 import Control.Monad.Reader(MonadReader, asks, local, ReaderT(runReaderT), ask)
 import Control.Monad.State.Strict(MonadState, gets, modify, execStateT)
+import Data.Bifunctor(first)
+import Data.Containers.ListUtils(nubOrdOn)
 import Data.Foldable(traverse_)
 import Data.Function((&))
 import Data.Functor(($>))
 import Data.Map.Strict qualified as M
+import Data.Maybe(mapMaybe, fromMaybe)
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
 
 import Language.Dynasty.Syntax
-import Utils
-import Data.Containers.ListUtils (nubOrdOn)
-import Data.Maybe (mapMaybe, fromMaybe)
-import Control.Monad (unless, when)
-import Data.Bifunctor (first)
+import Utils(showT)
 
 uniqueBy :: Ord b => (a -> b) -> [a] -> Bool
 uniqueBy f l = length l == length (nubOrdOn f l)

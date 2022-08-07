@@ -3,4 +3,4 @@
 
 # Tell GitHub's Linguist to ignore files in Examples when detecting repo language
 # More info at https://github.com/github/linguist#vendored-code
-Examples/* linguist-vendored
+examples/* linguist-vendored

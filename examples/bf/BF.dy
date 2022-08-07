@@ -1,5 +1,6 @@
 module BF
 
+import Dynasty.Prelude
 import Dynasty.IO
 
 chars s =

@@ -1,5 +1,7 @@
 module Parser
 
+import Dynasty.Prelude
+
 chars s =
   let
     l = length s and

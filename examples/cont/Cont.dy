@@ -1,5 +1,7 @@
 module Cont
 
+import Dynasty.Prelude
+
 -- Implementing a Haskell-style ContT monad
 
 return a = \k -> k a and

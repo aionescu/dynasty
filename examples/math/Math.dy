@@ -1,5 +1,7 @@
 module Math
 
+import Dynasty.Prelude
+
 not = \case
   | False -> True
   | True -> False

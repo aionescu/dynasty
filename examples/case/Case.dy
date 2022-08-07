@@ -1,5 +1,7 @@
 module Case
 
+import Dynasty.Prelude
+
 traverse f = \case
   | [] -> pure ()
   | x :: xs -> f x *> traverse f xs

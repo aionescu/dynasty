@@ -19,12 +19,10 @@ You can find some Dynasty programs in the [examples](examples) folder, and the s
 
 (Can be installed via [ghcup](https://www.haskell.org/ghcup/))
 
-Before trying to run Dynasty programs, it is recommended to execute the `symlink-core.sh` script to create the `$HOME/.dynasty/core` directory. Otherwise, it is necessary to provide the `--core-dir` argument when invoking the compiler.
-
 To compile Dynasty programs, use the following command:
 
 ```sh
-cabal run . -- <target>
+cabal run . -- <target-dir>
 ```
 
 The first invocation may take a while, since it will also build the compiler's dependencies.

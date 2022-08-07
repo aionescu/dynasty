@@ -14,8 +14,14 @@ category: Interpreter
 build-type: Simple
 extra-source-files: README.md
 
+data-files:
+  core/runtime.js
+  core/**/*.dy
+
 executable dynasty
+  hs-source-dirs: src
   main-is: Main.hs
+  autogen-modules: Paths_dynasty
 
   other-modules:
     Utils
@@ -26,8 +32,7 @@ executable dynasty
     Language.Dynasty.Simplify
     Language.Dynasty.Codegen
     Opts
-
-  hs-source-dirs: src
+    Paths_dynasty
 
   build-depends:
     array ^>= 0.5.4

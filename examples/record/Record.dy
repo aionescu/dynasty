@@ -1,5 +1,7 @@
 module Record
 
+import Dynasty.Prelude
+
 y = 3 and
 p = Point { x = 7, y } and
 p' =

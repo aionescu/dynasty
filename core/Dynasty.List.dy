@@ -1,5 +1,7 @@
 module Dynasty.List
 
+import Dynasty.Prelude
+
 foldr f z = \case
   | [] -> z
   | x :: xs -> f x $ foldr f z xs

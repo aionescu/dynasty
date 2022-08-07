@@ -98,12 +98,14 @@ withBindingGroup bs m
 validateBindingGroup :: (MonadReader Env m, MonadError Text m) => BindingGroup -> m ()
 validateBindingGroup bs = withBindingGroup bs $ pure ()
 
-mainExists :: MonadError Text m => Bool -> [Module] -> m ()
-mainExists singleFile ms =
-  unless (any isMain ms) do
-    throwError "No suitable Main module found"
+mainExists :: MonadError Text m => [Module] -> m ()
+mainExists ms =
+  case filter isMain ms of
+    [_] -> pure ()
+    [] -> throwError "No suitable main module found"
+    _ -> throwError "Multiple suitable main modules found"
   where
-    isMain Module{..} = (singleFile || moduleName == "Main") && elem "main" (fst <$> moduleBindings)
+    isMain Module{..} = "main" `elem` moduleExports
 
 modulesUnique :: MonadError Text m => [Module] -> m ()
 modulesUnique ms =
@@ -150,26 +152,22 @@ validateModule m@Module{..} =
     withVars (S.fromList $ fromMaybe [] . importIdents =<< moduleImports) $
       validateBindingGroup moduleBindings
 
-validateModules :: (MonadReader Env m, MonadError Text m) => Bool -> [Module] -> m ()
-validateModules singleFile ms = do
+validateModules :: (MonadReader Env m, MonadError Text m) => [Module] -> m ()
+validateModules ms = do
   modulesUnique ms
-  mainExists singleFile ms
+  mainExists ms
   traverse_ validateModule ms
 
 fillImports :: [Module] -> [Module]
 fillImports ms = go <$> ms
   where
-    go m@Module{moduleName="Dynasty.Prelude"} = m
-    go m@Module{..} = m { moduleImports = fill <$> prelude : moduleImports }
-
-    prelude = Import "Dynasty.Prelude" Nothing
-    modExports = M.fromList $ ((,) <$> moduleName <*> moduleExports) <$> ms
-
+    go m@Module{..} = m { moduleImports = fill <$> moduleImports }
     fill i@Import{..} =
       i { importIdents = Just $ fromMaybe (modExports M.! importModule) importIdents }
+    modExports = M.fromList $ ((,) <$> moduleName <*> moduleExports) <$> ms
 
-validate :: Bool -> [Module] -> Either Text [Module]
-validate singleFile (fillImports -> ms) =
-  validateModules singleFile ms $> ms
+validate :: [Module] -> Either Text [Module]
+validate (fillImports -> ms) =
+  validateModules ms $> ms
   & flip runReaderT S.empty
   & first ("Error: " <>)

@@ -1,4 +1,6 @@
-module Lists
+module List
+
+import Dynasty.Prelude
 
 main =
   let take n l =

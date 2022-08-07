@@ -13,11 +13,9 @@ import Opts(Opts(..), getOpts)
 import System.Exit(exitFailure)
 import Control.Monad(join)
 import System.Directory (listDirectory, doesFileExist)
-import System.FilePath ((</>), isExtensionOf, dropExtension, (<.>))
+import System.FilePath ((</>), isExtensionOf)
 import Data.Function ((&))
-
-isSingleFile :: FilePath -> IO Bool
-isSingleFile f = ("dy" `isExtensionOf` f &&) <$> doesFileExist f
+import Paths_dynasty (getDataDir)
 
 getDyFiles :: FilePath -> IO [FilePath]
 getDyFiles path =
@@ -30,23 +28,21 @@ readModule path = (path,) <$> T.readFile path
 
 run :: Opts -> IO ()
 run Opts{..} = do
-  singleFile <- isSingleFile optsPath
-  runtime <- T.readFile $ optsCoreDir </> "runtime.js"
-  coreFiles <- getDyFiles optsCoreDir
-  files <- getDyFiles optsPath
-  modules <- traverse readModule $ coreFiles <> files
+  coreDir <- (</> "core") <$> getDataDir
+  runtime <- T.readFile $ coreDir </> "runtime.js"
+  coreFiles <- getDyFiles coreDir
+  userFiles <- getDyFiles optsPath
+  modules <- traverse readModule $ coreFiles <> userFiles
 
   let
-    outPath =
-      case (optsOutPath, singleFile) of
-        ("", True) -> dropExtension optsPath <.> "js"
-        ("", False) -> optsPath </> "main.js"
-        _ -> optsOutPath
+    outPath
+      | null optsOutPath = optsPath </> "main.js"
+      | otherwise = optsOutPath
 
   modules
     & traverse (uncurry parseModule)
-    >>= validate singleFile
-    <&> simplify singleFile
+    >>= validate
+    <&> simplify
     <&> compile runtime
     & either
       (\e -> T.putStrLn e *> exitFailure)

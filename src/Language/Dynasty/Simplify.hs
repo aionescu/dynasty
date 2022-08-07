@@ -3,7 +3,7 @@ module Language.Dynasty.Simplify(simplify) where
 import Control.Monad.Reader(MonadReader, ask, local, runReader)
 import Data.Array qualified as A
 import Data.Bifunctor(second)
-import Data.Foldable(foldl', foldrM)
+import Data.Foldable(foldl', foldrM, find)
 import Data.Graph(Tree(..))
 import Data.Graph qualified as G
 import Data.Map.Strict(Map)
@@ -17,9 +17,9 @@ import Data.Tuple(swap)
 import Language.Dynasty.Syntax(Ident, Module (..), Import (..))
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Core
-import Utils(showT, imap, (...))
+import Utils(showT, imap)
 import Data.Functor ((<&>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 simplifyPat :: Expr -> S.Pat -> ([(Expr, Check)], [(Expr, Ident)])
 simplifyPat e = \case
@@ -151,16 +151,19 @@ modToExpr Module{..} =
     importBindings Import{..} =
       fromMaybe [] importIdents <&> \i -> (i, S.RecordField (S.Var importModule) i)
 
-modulesToExpr :: Bool -> [Module] -> S.Expr
-modulesToExpr singleFile ms =
+mainModule :: [Module] -> Ident
+mainModule ms = moduleName $ fromJust $ find isMain ms
+  where
+    isMain Module{..} = "main" `elem` moduleExports
+
+modulesToExpr :: [Module] -> S.Expr
+modulesToExpr ms =
   S.Let (toBinding <$> filter ((`elem` imported) . moduleName) ms)
   $ S.RecordField (S.Var mainMod) "main"
   where
+    mainMod = mainModule ms
     toBinding m@Module{..} = (moduleName, modToExpr m)
     imported = S'.fromList $ mainMod : ((importModule <$>) . moduleImports =<< ms)
-    mainMod
-      | singleFile = moduleName $ last ms
-      | otherwise = "Main"
 
-simplify :: Bool -> [Module] -> Expr
-simplify = flip runReader 0 . simplifyExpr ... modulesToExpr
+simplify :: [Module] -> Expr
+simplify = flip runReader 0 . simplifyExpr . modulesToExpr

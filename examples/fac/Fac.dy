@@ -1,5 +1,7 @@
 module Fac
 
+import Dynasty.Prelude
+
 -- Self-recursive binding
 fac = \case
   | 0 -> 1

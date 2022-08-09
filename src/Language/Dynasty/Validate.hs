@@ -62,7 +62,7 @@ validateDo [] e = validateExpr e
 validateDo ((Nothing, e) : es) e' = validateExpr e *> validateDo es e'
 validateDo ((Just v, e) : es) e' = validateExpr e *> withVars (S.singleton v) (validateDo es e')
 
-withVars :: (MonadError Text m, MonadReader Env m) => Env -> m a -> m a
+withVars :: MonadReader Env m => Env -> m a -> m a
 withVars vs = local (<> vs)
 
 validateExpr :: (MonadError Text m, MonadReader Env m) => Expr -> m ()

@@ -4,10 +4,10 @@ module Language.Dynasty.Core where
 
 import Data.Text(Text)
 
-import Language.Dynasty.Syntax(Ident, Num')
+import Language.Dynasty.Syntax(Ident, NumLit)
 
 data Check
-  = IsNum Num'
+  = IsNum NumLit
   | IsStr Text
   | IsCtor Text Int
   | HasField Ident
@@ -16,7 +16,7 @@ data Check
 type Branch = ([(Expr, Check)], Expr)
 
 data Expr
-  = NumLit Num'
+  = NumLit NumLit
   | StrLit Text
   | Record [(Ident, Expr)]
   | Ctor Ident [Expr]

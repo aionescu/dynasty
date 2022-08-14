@@ -59,9 +59,10 @@ executable dynasty
     -Wunused-packages
     -Widentities
     -Wredundant-constraints
-    -Wunticked-promoted-constructors
     -Wpartial-fields
     -Wno-name-shadowing
+    -Wno-star-is-type
+    -Wno-unticked-promoted-constructors
 
   default-extensions:
     ApplicativeDo
@@ -95,7 +96,6 @@ executable dynasty
     NamedFieldPuns
     NegativeLiterals
     NoMonomorphismRestriction
-    NoStarIsType
     OverloadedStrings
     PartialTypeSignatures
     PatternSynonyms
@@ -104,6 +104,7 @@ executable dynasty
     RecursiveDo
     ScopedTypeVariables
     StandaloneDeriving
+    StarIsType
     TupleSections
     TypeApplications
     TypeFamilies

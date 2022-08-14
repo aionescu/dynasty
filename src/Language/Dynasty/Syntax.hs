@@ -11,44 +11,44 @@ type Idx = Int
 -- E for expressions, P for patterns
 data SynKind = E | P
 
-data Num'
+data NumLit
   = NaN
   | Inf
   | NegInf
   | Num Scientific
   deriving stock Show
 
-data AppHead a where
+data AppHead :: SynKind -> * where
   Ctor :: Ident -> AppHead a
-  Fn :: Syn 'E -> AppHead 'E
+  Fn :: Syn E -> AppHead E
 
 deriving stock instance Show (AppHead a)
 
-data Syn a where
-  NumLit :: Num' -> Syn a
+data Syn :: SynKind -> * where
+  NumLit :: NumLit -> Syn a
   StrLit :: Text -> Syn a
   Tuple :: [Syn a] -> Syn a
   List :: [Syn a] -> Syn a
   Record :: [(Ident, Maybe (Syn a))] -> Syn a
   Var :: Ident -> Syn a
 
-  RecordField :: Syn 'E -> Ident -> Syn 'E
-  CtorField :: Syn 'E -> Idx -> Syn 'E
-  Case :: Syn 'E -> [(Syn 'P, Syn 'E)] -> Syn 'E
-  Lambda :: [Syn 'P] -> Syn 'E -> Syn 'E
-  LambdaCase :: [(Syn 'P, Syn 'E)] -> Syn 'E
+  RecordField :: Syn E -> Ident -> Syn E
+  CtorField :: Syn E -> Idx -> Syn E
+  Case :: Syn E -> [(Syn P, Syn E)] -> Syn E
+  Lambda :: [Syn P] -> Syn E -> Syn E
+  LambdaCase :: [(Syn P, Syn E)] -> Syn E
   App :: AppHead a -> [Syn a] -> Syn a
-  Let :: BindingGroup -> Syn 'E -> Syn 'E
-  Do :: [(Maybe Ident, Syn 'E)] -> Syn 'E -> Syn 'E
-  UnsafeJS :: Bool -> [Ident] -> Text -> Syn 'E
+  Let :: BindingGroup -> Syn E -> Syn E
+  Do :: [(Maybe Ident, Syn E)] -> Syn E -> Syn E
+  UnsafeJS :: Bool -> [Ident] -> Text -> Syn E
 
-  Wildcard :: Syn 'P
-  As :: Syn 'P -> Ident -> Syn 'P
+  Wildcard :: Syn P
+  As :: Syn P -> Ident -> Syn P
 
 deriving stock instance Show (Syn a)
 
-type Expr = Syn 'E
-type Pat = Syn 'P
+type Expr = Syn E
+type Pat = Syn P
 
 type BindingGroup = [(Ident, Expr)]
 

@@ -5,7 +5,7 @@ import Data.Foldable(fold)
 import Data.Text(Text)
 import Data.Text qualified as T
 
-import Language.Dynasty.Syntax(Ident, Num'(..))
+import Language.Dynasty.Syntax(Ident, NumLit(..))
 import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Core(Branch, Check(..), Expr(..))
 import Utils(showT, imap)

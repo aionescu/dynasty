@@ -2,6 +2,12 @@
     "name": "dynasty-vscode",
     "displayName": "Dynasty",
     "description": "Dynasty Syntax Highlighting",
+    "publisher": "aionescu",
+    "icon": "icon.png",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/aionescu/dynasty.git"
+    },
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.50.0"

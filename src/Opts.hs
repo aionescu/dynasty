@@ -4,14 +4,14 @@ import Options.Applicative
 
 data Opts =
   Opts
-  { optsOutPath :: FilePath
+  { optsOutPath :: Maybe FilePath
   , optsPath :: FilePath
   }
 
 optsParser :: Parser Opts
 optsParser =
   Opts
-  <$> strOption (short 'o' <> long "out-path" <> metavar "OUT_PATH" <> value "" <> help "The name of the output file.")
+  <$> optional (strOption $ short 'o' <> long "out-path" <> metavar "OUT_PATH" <> help "The name of the output file.")
   <*> strArgument (metavar "PATH" <> value "." <> help "The directory to compile.")
 
 fullParser :: ParserInfo Opts

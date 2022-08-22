@@ -79,6 +79,7 @@ executable dynasty
     MagicHash
     MultiWayIf
     NegativeLiterals
+    NoMonomorphismRestriction
     NoStarIsType
     OverloadedStrings
     PartialTypeSignatures

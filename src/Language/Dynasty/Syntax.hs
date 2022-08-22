@@ -8,9 +8,6 @@ import Data.Text(Text)
 type Ident = Text
 type Idx = Int
 
--- E for expressions, P for patterns
-data SynKind = E | P
-
 data NumLit
   = NaN
   | Inf
@@ -18,26 +15,29 @@ data NumLit
   | Num Scientific
   deriving stock Show
 
-data AppHead :: SynKind -> * where
-  Ctor :: Ident -> AppHead a
+-- E for expressions, P for patterns
+data SynKind = E | P
+
+data AppHead (k :: SynKind) where
+  Ctor :: Ident -> AppHead k
   Fn :: Syn E -> AppHead E
 
-deriving stock instance Show (AppHead a)
+deriving stock instance Show (AppHead k)
 
-data Syn :: SynKind -> * where
-  NumLit :: NumLit -> Syn a
-  StrLit :: Text -> Syn a
-  Tuple :: [Syn a] -> Syn a
-  List :: [Syn a] -> Syn a
-  Record :: [(Ident, Maybe (Syn a))] -> Syn a
-  Var :: Ident -> Syn a
+data Syn (k :: SynKind) where
+  NumLit :: NumLit -> Syn k
+  StrLit :: Text -> Syn k
+  Tuple :: [Syn k] -> Syn k
+  List :: [Syn k] -> Syn k
+  Record :: [(Ident, Maybe (Syn k))] -> Syn k
+  Var :: Ident -> Syn k
 
   RecordField :: Syn E -> Ident -> Syn E
   CtorField :: Syn E -> Idx -> Syn E
   Case :: Syn E -> [(Syn P, Syn E)] -> Syn E
   Lambda :: [Syn P] -> Syn E -> Syn E
   LambdaCase :: [(Syn P, Syn E)] -> Syn E
-  App :: AppHead a -> [Syn a] -> Syn a
+  App :: AppHead k -> [Syn k] -> Syn k
   Let :: BindingGroup -> Syn E -> Syn E
   Do :: [(Maybe Ident, Syn E)] -> Syn E -> Syn E
   UnsafeJS :: Bool -> [Ident] -> Text -> Syn E
@@ -45,7 +45,7 @@ data Syn :: SynKind -> * where
   Wildcard :: Syn P
   As :: Syn P -> Ident -> Syn P
 
-deriving stock instance Show (Syn a)
+deriving stock instance Show (Syn k)
 
 type Expr = Syn E
 type Pat = Syn P

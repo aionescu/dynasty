@@ -14,7 +14,7 @@ You can find some Dynasty programs in the [examples](examples) folder, and the s
 
 ### Prerequisites
 
-* GHC (>= 8.10)
+* GHC (>= 9.2)
 * cabal (>= 3.6)
 
 (Can be installed via [ghcup](https://www.haskell.org/ghcup/))

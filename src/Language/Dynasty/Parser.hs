@@ -96,13 +96,13 @@ inf R = InfixR
 opE :: Parser Char -> Parser (Expr -> Expr -> Expr)
 opE c = operator c <&> \o a b -> App (Fn $ Var o) [a, b]
 
-opCtor :: Parser (Syn a -> Syn a -> Syn a)
+opCtor :: Parser (Syn k -> Syn k -> Syn k)
 opCtor = operator (char ':') <&> \o a b -> App (Ctor o) [a, b]
 
 opInfixE :: Parser (Expr -> Expr -> Expr)
 opInfixE = between (char '`') (char '`') varName <&> \o a b -> App (Fn $ Var o) [a, b]
 
-opInfixCtor :: Parser (Syn a -> Syn a -> Syn a)
+opInfixCtor :: Parser (Syn k -> Syn k -> Syn k)
 opInfixCtor = between (char '`') (char '`') ctorName <&> \o a b -> App (Ctor o) [a, b]
 
 varIdent :: Parser Text
@@ -129,7 +129,7 @@ list term = List <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
 signed :: Num a => Parser (a -> a)
 signed = (char '-' $> negate) <|> pure id
 
-numLit :: Parser (Syn a)
+numLit :: Parser (Syn k)
 numLit =
   choice
   [ NumLit NaN <$ symbol "NaN"
@@ -208,7 +208,7 @@ patSimple =
   [ctorSimple, var, tuple pat, record pat, list pat, simpleLit, wildcard]
   <?> "Pattern"
 
-ctorHead :: Parser ([Syn a] -> Syn a)
+ctorHead :: Parser ([Syn k] -> Syn k)
 ctorHead = App . Ctor <$> ctorIdent
 
 fnHead :: Parser ([Expr] -> Expr)

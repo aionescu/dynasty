@@ -1,7 +1,7 @@
 module Language.Dynasty.Codegen(compile) where
 
 import Data.Char(isUpper)
-import Data.Foldable(fold)
+import Data.Foldable(foldMap')
 import Data.Text(Text)
 import Data.Text qualified as T
 
@@ -12,7 +12,7 @@ import Utils(showT, imap)
 
 type JS = Text
 
-opCharName :: Char -> Text
+opCharName :: Char -> JS
 opCharName = \case
   '!' -> "Bang"
   '#' -> "Hash"
@@ -31,7 +31,7 @@ opCharName = \case
   '\\' -> "Bslash"
   '^' -> "Caret"
   '|' -> "Bar"
-  '-' -> "Minus"
+  '-' -> "Dash"
   '~' -> "Tilde"
   ';' -> "Semi"
   c -> error $ "opCharName: " <> show c
@@ -44,13 +44,13 @@ ident i
   | otherwise = "_" <> T.replace "'" "_" i
 
 compileLet :: [(Bool, [(Ident, Expr)])] -> Expr -> JS
-compileLet gs e = "(()=>{" <> foldMap bindingGroup gs <> "return " <> compileExpr e <> ";})()"
+compileLet gs e = "(()=>{" <> foldMap' bindingGroup gs <> "return " <> compileExpr e <> ";})()"
   where
-    bindingGroup (False, bs) = foldMap (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
+    bindingGroup (False, bs) = foldMap' (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
     bindingGroup (True, bs) = decls <> assigns
       where
-        decls = foldMap ((\i -> "const " <> ident i <> "={};") . fst) bs
-        assigns = foldMap (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
+        decls = foldMap' ((\i -> "const " <> ident i <> "={};") . fst) bs
+        assigns = foldMap' (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
 
 check :: JS -> Check -> JS
 check e (IsNum NaN) = "isNaN(" <> e <> ")"
@@ -82,7 +82,7 @@ compileExpr (Record fs) = "{" <> fields <> "}"
     fields = T.intercalate "," $ (\(i, e) -> ident i <> ":" <> thunk e) <$> fs
 compileExpr (Ctor c es) = "{$:" <> showT c <> fields <> "}"
   where
-    fields = fold $ imap (\i e -> ",$" <> showT i <> ":" <> thunk e) es
+    fields = foldMap' id $ imap (\i e -> ",$" <> showT i <> ":" <> thunk e) es
 compileExpr (Var i) = "e(" <> ident i <> ")"
 compileExpr (Field e i) = "e(" <> compileExpr e <> "." <> ident i <> ")"
 compileExpr (Case bs) = compileCase bs

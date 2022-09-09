@@ -23,6 +23,6 @@ y f = let l = \x -> f (x x) in l l and
 facY = y fac' and
 
 main =
-  print (fac 100) *>
-  print (facF 100) *>
-  print (facY 100)
+  do   print (fac 100)
+  then print (facF 100)
+  then print (facY 100)

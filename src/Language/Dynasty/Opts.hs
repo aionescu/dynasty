@@ -1,4 +1,4 @@
-module Opts(Opts(..), getOpts) where
+module Language.Dynasty.Opts(Opts(..), getOpts) where
 
 import Options.Applicative
 

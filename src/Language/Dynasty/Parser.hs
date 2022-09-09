@@ -1,12 +1,11 @@
-module Language.Dynasty.Parser(parseModule, varOpChars) where
+module Language.Dynasty.Parser(parse, varOpChars) where
 
-import Control.Monad.Combinators.Expr(Operator (..), makeExprParser)
+import Control.Monad.Combinators.Expr(Operator(..), makeExprParser)
 import Data.Bifunctor(first)
-import Data.Containers.ListUtils(nubOrd)
 import Data.Foldable(foldl')
 import Data.Function(on, (&))
 import Data.Functor((<&>), ($>))
-import Data.Maybe(fromMaybe)
+import Data.List(foldl1')
 import Data.Text(Text)
 import Data.Text qualified as T
 import Data.Void(Void)
@@ -15,6 +14,7 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Syntax
+import Language.Dynasty.Utils((...))
 
 type Parser = Parsec Void Text
 
@@ -46,18 +46,18 @@ reservedNames :: [Text]
 reservedNames =
   [ "unsafejs", "unsafejswhnf"
   , "module", "import"
-  , "case", "of", "as"
+  , "case", "of"
   , "let", "and", "in"
   , "NaN", "Infinity"
   , "do", "then"
   ]
 
 reservedOps :: [Text]
-reservedOps = ["=", "\\", "->", "<-", "|"]
+reservedOps = ["=", "\\", "->", "<-", "|", "@"]
 
 ident :: Parser Char -> Parser Text
 ident fstChar =
-  try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many sndChar) <?> "Identifier")
+  try (notReserved . T.pack =<< ((:) <$> fstChar <*> many sndChar) <?> "Identifier")
   where
     sndChar = alphaNumChar <|> char '\''
 
@@ -65,10 +65,10 @@ ident fstChar =
       | i `elem` reservedNames = fail $ "Reserved name " <> show i
       | otherwise = pure i
 
-varOpChars :: [Char]
+varOpChars :: String
 varOpChars = "!#$%&*+./<=>?@\\^|-~;"
 
-opChars :: [Char]
+opChars :: String
 opChars = ':' : varOpChars
 
 operator :: Parser Char -> Parser Text
@@ -82,10 +82,10 @@ operator fstChar =
       | otherwise = pure i
 
 varName :: Parser Text
-varName = ident lowerChar
+varName = lexeme $ ident lowerChar
 
 ctorName :: Parser Text
-ctorName = ident upperChar
+ctorName = lexeme $ ident upperChar
 
 data Fixity = L | R
 
@@ -94,82 +94,70 @@ inf L = InfixL
 inf R = InfixR
 
 opE :: Parser Char -> Parser (Expr -> Expr -> Expr)
-opE c = operator c <&> \o a b -> App (Fn $ Var o) [a, b]
+opE c = operator c <&> \o a b -> (Var (Unqual o) `App` a) `App` b
 
-opCtor :: Parser (Syn k -> Syn k -> Syn k)
-opCtor = operator (char ':') <&> \o a b -> App (Ctor o) [a, b]
+opCtor :: Parser Text
+opCtor = operator (char ':')
 
 opInfixE :: Parser (Expr -> Expr -> Expr)
-opInfixE = between (char '`') (char '`') varName <&> \o a b -> App (Fn $ Var o) [a, b]
+opInfixE = between (char '`') (char '`') varName <&> \o a b -> (Var (Unqual o) `App` a) `App` b
 
-opInfixCtor :: Parser (Syn k -> Syn k -> Syn k)
-opInfixCtor = between (char '`') (char '`') ctorName <&> \o a b -> App (Ctor o) [a, b]
+opInfixCtor :: Parser Text
+opInfixCtor = between (char '`') (char '`') ctorName
 
-varIdent :: Parser Text
-varIdent = varName <|> try (parens $ operator $ oneOf varOpChars)
+varId :: Parser Text
+varId = varName <|> try (parens $ operator $ oneOf varOpChars)
 
-ctorIdent :: Parser Text
-ctorIdent = ctorName <|> try (parens $ operator $ char ':')
+ctorId :: Parser Text
+ctorId = ctorName <|> try (parens $ operator $ char ':')
 
-tuple :: Parser (Syn k) -> Parser (Syn k)
-tuple term = parens $ mkTup <$> (try term `sepBy` symbol ",")
+tupLit :: ([a] -> a) -> Parser a -> Parser a
+tupLit mk term = parens $ mkTup <$> (try term `sepBy` symbol ",")
   where
     mkTup [a] = a
-    mkTup l = Tuple l
+    mkTup l = mk l
 
-record :: Parser (Syn k) -> Parser (Syn k)
-record term =
-  Record <$> btwn "{" "}" (field `sepBy` symbol ",") <?> "Record literal"
+recLit :: Parser a -> Parser [(Id, Maybe a)]
+recLit term =
+  btwn "{" "}" (field `sepBy` symbol ",") <?> "Record literal"
   where
-    field = (,) <$> varIdent <*> optional (symbol "=" *> term)
+    field = (,) <$> varId <*> optional (symbol "=" *> term)
 
-list :: Parser (Syn k) -> Parser (Syn k)
-list term = List <$> btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
+listLit :: Parser a -> Parser [a]
+listLit term = btwn "[" "]" (term `sepBy` symbol ",") <?> "List literal"
 
 signed :: Num a => Parser (a -> a)
-signed = (char '-' $> negate) <|> pure id
+signed = char '-' $> negate <|> pure id
 
-numLit :: Parser (Syn k)
-numLit =
+number :: Parser Number
+number =
   choice
-  [ NumLit NaN <$ symbol "NaN"
-  , NumLit Inf <$ symbol "Infinity"
-  , NumLit NegInf <$ symbol "-Infinity"
-  , NumLit . Num <$> (signed <*> lexeme L.scientific)
+  [ NaN <$ symbol "NaN"
+  , Inf <$ symbol "Infinity"
+  , NegInf <$ symbol "-Infinity"
+  , Num <$> (signed <*> lexeme L.scientific)
   ]
   <?> "Integer literal"
 
-strRaw :: Parser Text
-strRaw = lexeme (char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack) <?> "String literal"
-
-strLit :: Parser (Syn k)
-strLit = StrLit <$> strRaw
-
-simpleLit :: Parser (Syn k)
-simpleLit = try numLit <|> strLit
-
-var :: Parser (Syn k)
-var = Var <$> varIdent
-
-ctorSimple :: Parser (Syn k)
-ctorSimple = (\i -> App (Ctor i) []) <$> ctorIdent
+strLit :: Parser Text
+strLit = lexeme (char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack) <?> "String literal"
 
 caseBranch :: Parser (Pat, Expr)
 caseBranch = symbol "|" *> ((,) <$> (pat <* symbol "->" ) <*> expr)
 
 lamCase :: Parser Expr
-lamCase = symbol "case" *> (LambdaCase <$> many caseBranch)
+lamCase = symbol "case" *> (LamCase <$> many caseBranch)
 
 lamVars :: Parser Expr
-lamVars = Lambda <$> (some patSimple <* symbol "->") <*> expr
+lamVars = Lam <$> (some patSimple <* symbol "->") <*> expr
 
 lam :: Parser Expr
 lam = symbol "\\" *> (try lamCase <|> lamVars)
 
-binding :: Parser (Ident, Expr)
-binding = (,) <$> varIdent <*> (args <*> (symbol "=" *> expr))
+binding :: Parser (Id, Expr)
+binding = (,) <$> varId <*> (args <*> (symbol "=" *> expr))
   where
-    args = (Lambda <$> some patSimple) <|> pure id
+    args = Lam <$> some patSimple <|> pure id
 
 bindingGroup :: Parser BindingGroup
 bindingGroup = try binding `sepBy` symbol "and"
@@ -184,50 +172,64 @@ case' :: Parser Expr
 case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> many caseBranch
 
 unsafeJS :: Parser Expr
-unsafeJS = withWhnf <*> (btwn "[" "]" (varIdent `sepBy` symbol ",") <|> pure []) <*> strRaw
+unsafeJS = withWhnf <*> (btwn "[" "]" (varId `sepBy` symbol ",") <|> pure []) <*> strLit
   where
     withWhnf = UnsafeJS <$> (symbol "unsafejswhnf" $> True <|> symbol "unsafejs" $> False)
 
 do' :: Parser Expr
-do' = Do <$> (symbol "do" *> some (try $ stmt <* symbol "then")) <*> expr
+do' = Do (Unqual ">>=") <$> (symbol "do" *> some (try $ stmt <* symbol "then")) <*> expr
   where
-    stmt = (,) <$> optional (try $ varIdent <* symbol "<-") <*> expr
+    stmt = (,) <$> optional (try $ patSimple <* symbol "<-") <*> expr
+
+qualVar :: Parser Expr
+qualVar = Var ... Qual <$> try (T.intercalate "." <$> some (ident upperChar <* char '.')) <*> varId
 
 exprSimple :: Parser Expr
 exprSimple =
   choice
-  [ctorSimple, var, tuple expr, let', lam, case', unsafeJS, do', record expr, list expr, simpleLit]
+  [ try qualVar
+  , (`CtorLit` []) <$> ctorId
+  , Var . Unqual <$> varId
+  , tupLit TupLit expr
+  , let', lam, case', unsafeJS, do'
+  , RecLit <$> recLit expr
+  , ListLit <$> listLit expr
+  , try $ NumLit <$> number
+  , StrLit <$> strLit
+  ]
   <?> "Expression"
 
 wildcard :: Parser Pat
 wildcard = symbol "_" $> Wildcard
 
+asPat :: Parser Pat
+asPat = As <$> (varId <* symbol "@") <*> patSimple
+
 patSimple :: Parser Pat
 patSimple =
   choice
-  [ctorSimple, var, tuple pat, record pat, list pat, simpleLit, wildcard]
+  [ (`CtorPat` []) <$> ctorId
+  , try asPat
+  , VarPat <$> varId
+  , tupLit TupPat pat
+  , RecPat <$> recLit pat
+  , ListPat <$> listLit pat
+  , try $ NumPat <$> number
+  , StrPat <$> strLit
+  , wildcard
+  ]
   <?> "Pattern"
 
-ctorHead :: Parser ([Syn k] -> Syn k)
-ctorHead = App . Ctor <$> ctorIdent
-
-fnHead :: Parser ([Expr] -> Expr)
-fnHead = App . Fn <$> exprField
-
-asPat :: Parser Pat
-asPat = as <$> patSimple <*> optional (try $ symbol "as" *> varIdent)
-  where
-    as p Nothing = p
-    as p (Just v) = As p v
-
 patCtorApp :: Parser Pat
-patCtorApp = try (ctorHead <*> some asPat) <|> asPat
+patCtorApp = try (CtorPat <$> ctorId <*> some patSimple) <|> patSimple
 
 patOps :: [[Operator Parser Pat]]
 patOps =
-  [ [ inf R opCtor ]
-  , [ inf R opInfixCtor ]
+  [ [ inf R $ ctorPat <$> opCtor ]
+  , [ inf R $ ctorPat <$> opInfixCtor ]
   ]
+  where
+    ctorPat o a b = CtorPat o [a, b]
 
 pat :: Parser Pat
 pat = makeExprParser patCtorApp patOps
@@ -235,13 +237,12 @@ pat = makeExprParser patCtorApp patOps
 exprField :: Parser Expr
 exprField = foldl' (&) <$> exprSimple <*> many (try $ char '.' *> field)
   where
-    field = (flip CtorField <$> lexeme L.decimal) <|> (flip RecordField <$> varIdent)
-
-appHead :: Parser ([Expr] -> Expr)
-appHead = try ctorHead <|> fnHead
+    field = flip CtorField <$> lexeme L.decimal <|> flip RecField <$> varId
 
 exprApp :: Parser Expr
-exprApp = appHead <*> many exprField
+exprApp =
+  try (CtorLit <$> ctorId <*> some exprField)
+  <|> foldl1' App <$> some exprField
 
 exprOps :: [[Operator Parser Expr]]
 exprOps =
@@ -253,31 +254,34 @@ exprOps =
   , [ inf R $ opE $ oneOf @[] "<>" ]
   , [ inf L $ opE $ oneOf @[] "=!|~" ]
   , [ inf R $ opE $ oneOf @[] "$@\\?" ]
-  , [ inf R opCtor ]
+  , [ inf R $ ctorLit <$> opCtor ]
   , [ inf L opInfixE ]
-  , [ inf R opInfixCtor ]
+  , [ inf R $ ctorLit <$> opInfixCtor ]
   ]
+  where
+    ctorLit o a b = CtorLit o [a, b]
 
 expr :: Parser Expr
 expr = makeExprParser exprApp exprOps
 
-modName :: Parser Ident
-modName = T.intercalate "." <$> ident upperChar `sepBy1` char '.'
+modName :: Parser Id
+modName = lexeme $ T.intercalate "." <$> ident upperChar `sepBy1` char '.'
 
-exportList :: Parser (Maybe [Ident])
-exportList = optional $ try $ parens $ varIdent `sepBy1` symbol ","
-
-import' :: Parser Import
-import' = Import <$> (symbol "import" *> modName) <*> exportList
+import' :: Parser Id
+import' = symbol "import" *> modName
 
 module' :: Parser Module
-module' = mkModule <$> (symbol "module" *> modName) <*> exportList <*> many import' <*> bindingGroup
-  where
-    mkModule name exports imports bindings =
-      Module name (fromMaybe (nubOrd $ fst <$> bindings) exports) imports bindings
+module' =
+  Module
+  <$> (symbol "module" *> modName)
+  <*> many import'
+  <*> bindingGroup
 
-program :: Parser Module
-program = optional shebang *> optional sc *> module' <* eof
+withShebang :: Parser a -> Parser a
+withShebang p = optional shebang *> optional sc *> p <* eof
 
 parseModule :: FilePath -> Text -> Either Text Module
-parseModule path = first (T.pack . errorBundlePretty) . runParser program path
+parseModule path = first (T.pack . errorBundlePretty) . runParser (withShebang module') path
+
+parse :: [(FilePath, Text)] -> Either Text Program
+parse ms = Program "" [] <$> traverse (uncurry parseModule) ms

@@ -1,14 +1,13 @@
 module Language.Dynasty.Codegen(compile) where
 
-import Data.Char(isUpper)
 import Data.Foldable(foldMap')
 import Data.Text(Text)
 import Data.Text qualified as T
 
-import Language.Dynasty.Syntax(Ident, NumLit(..))
-import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Core(Branch, Check(..), Expr(..))
-import Utils(showT, imap)
+import Language.Dynasty.Parser(varOpChars)
+import Language.Dynasty.Syntax(Id, Name(..), Number(..))
+import Language.Dynasty.Utils(imap, showT)
 
 type JS = Text
 
@@ -36,14 +35,20 @@ opCharName = \case
   ';' -> "Semi"
   c -> error $ "opCharName: " <> show c
 
-ident :: Ident -> JS
+ident :: Id -> JS
 ident i
-  | T.all (`elem` varOpChars) i = "_" <> T.concatMap opCharName i
+  | T.all (`elem` varOpChars) i = "$" <> T.concatMap opCharName i
   | T.head i == '_' || T.head i == '$' = i
-  | isUpper $ T.head i = "__" <> T.replace "." "$" (T.replace "'" "_" i)
   | otherwise = "_" <> T.replace "'" "_" i
 
-compileLet :: [(Bool, [(Ident, Expr)])] -> Expr -> JS
+modName :: Id -> JS
+modName i = "_" <> T.replace "." "_" (T.replace "'" "_" i)
+
+name :: Name -> JS
+name (Unqual i) = ident i
+name (Qual m i) = modName m <> "." <> ident i
+
+compileLet :: [(Bool, [(Id, Expr)])] -> Expr -> JS
 compileLet gs e = "(()=>{" <> foldMap' bindingGroup gs <> "return " <> compileExpr e <> ";})()"
   where
     bindingGroup (False, bs) = foldMap' (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
@@ -77,16 +82,16 @@ compileExpr (NumLit Inf) = "Infinity"
 compileExpr (NumLit NegInf) = "-Infinity"
 compileExpr (NumLit (Num n)) = showT n
 compileExpr (StrLit s) = showT s
-compileExpr (Record fs) = "{" <> fields <> "}"
+compileExpr (RecLit fs) = "{" <> fields <> "}"
   where
     fields = T.intercalate "," $ (\(i, e) -> ident i <> ":" <> thunk e) <$> fs
-compileExpr (Ctor c es) = "{$:" <> showT c <> fields <> "}"
+compileExpr (CtorLit c es) = "{$:" <> showT c <> fields <> "}"
   where
     fields = foldMap' id $ imap (\i e -> ",$" <> showT i <> ":" <> thunk e) es
-compileExpr (Var i) = "e(" <> ident i <> ")"
+compileExpr (Var n) = "e(" <> name n <> ")"
 compileExpr (Field e i) = "e(" <> compileExpr e <> "." <> ident i <> ")"
 compileExpr (Case bs) = compileCase bs
-compileExpr (Lambda i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
+compileExpr (Lam i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
 compileExpr (App f a) = compileExpr f <> "(" <> thunk a <> ")"
 compileExpr (Let bs e) = compileLet bs e
 compileExpr (UnsafeJS _ _ js) = js
@@ -94,14 +99,14 @@ compileExpr (UnsafeJS _ _ js) = js
 isWhnf :: Expr -> Bool
 isWhnf NumLit{} = True
 isWhnf StrLit{} = True
-isWhnf Ctor{} = True
-isWhnf Record{} = True
-isWhnf Lambda{} = True
+isWhnf CtorLit{} = True
+isWhnf RecLit{} = True
+isWhnf Lam{} = True
 isWhnf (UnsafeJS whnf _ _) = whnf
 isWhnf _ = False
 
 thunk :: Expr -> JS
-thunk (Var i) = ident i
+thunk (Var n) = name n
 thunk (Field e i) = compileExpr e <> "." <> ident i
 thunk e
   | isWhnf e = "{v:" <> compileExpr e <> "}"
@@ -113,5 +118,12 @@ parenthesize (compileExpr -> js)
   | T.isPrefixOf "{" js = "(" <> js <> ")"
   | otherwise = js
 
-compile :: JS -> Expr -> JS
-compile prelude e = prelude <> compileExpr e <> ".r();\n"
+compileModule :: (Id, Expr) -> JS
+compileModule (m, expr) = "const " <> modName m <> "=" <> compileExpr expr <> ";"
+
+compile :: JS -> ([(Id, Expr)], Id) -> JS
+compile prelude (ms, main) =
+  prelude
+  <> foldMap' compileModule ms
+  <> compileExpr (Var $ Qual main "main")
+  <> ".r();\n"

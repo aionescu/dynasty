@@ -5,65 +5,66 @@ module Language.Dynasty.Syntax where
 import Data.Scientific(Scientific)
 import Data.Text(Text)
 
-type Ident = Text
+type Id = Text
 type Idx = Int
 
-data NumLit
+data Number
   = NaN
   | Inf
   | NegInf
   | Num Scientific
   deriving stock Show
 
--- E for expressions, P for patterns
-data SynKind = E | P
-
-data AppHead (k :: SynKind) where
-  Ctor :: Ident -> AppHead k
-  Fn :: Syn E -> AppHead E
-
-deriving stock instance Show (AppHead k)
-
-data Syn (k :: SynKind) where
-  NumLit :: NumLit -> Syn k
-  StrLit :: Text -> Syn k
-  Tuple :: [Syn k] -> Syn k
-  List :: [Syn k] -> Syn k
-  Record :: [(Ident, Maybe (Syn k))] -> Syn k
-  Var :: Ident -> Syn k
-
-  RecordField :: Syn E -> Ident -> Syn E
-  CtorField :: Syn E -> Idx -> Syn E
-  Case :: Syn E -> [(Syn P, Syn E)] -> Syn E
-  Lambda :: [Syn P] -> Syn E -> Syn E
-  LambdaCase :: [(Syn P, Syn E)] -> Syn E
-  App :: AppHead k -> [Syn k] -> Syn k
-  Let :: BindingGroup -> Syn E -> Syn E
-  Do :: [(Maybe Ident, Syn E)] -> Syn E -> Syn E
-  UnsafeJS :: Bool -> [Ident] -> Text -> Syn E
-
-  Wildcard :: Syn P
-  As :: Syn P -> Ident -> Syn P
-
-deriving stock instance Show (Syn k)
-
-type Expr = Syn E
-type Pat = Syn P
-
-type BindingGroup = [(Ident, Expr)]
-
-data Import =
-  Import
-  { importModule :: Text
-  , importIdents :: Maybe [Ident]
-  }
+data Name
+  = Qual Id Id
+  | Unqual Id
   deriving stock Show
+
+data Pat
+  = NumPat Number
+  | StrPat Text
+  | TupPat [Pat]
+  | ListPat [Pat]
+  | CtorPat Id [Pat]
+  | RecPat [(Id, Maybe Pat)]
+  | VarPat Id
+  | Wildcard
+  | As Id Pat
+  deriving stock Show
+
+data Expr
+  = NumLit Number
+  | StrLit Text
+  | TupLit [Expr]
+  | ListLit [Expr]
+  | RecLit [(Id, Maybe Expr)]
+  | CtorLit Id [Expr]
+  | Var Name
+  | RecField Expr Id
+  | CtorField Expr Idx
+  | Case Expr [(Pat, Expr)]
+  | Lam [Pat] Expr
+  | LamCase [(Pat, Expr)]
+  | App Expr Expr
+  | Let BindingGroup Expr
+  | Do Name [(Maybe Pat, Expr)] Expr
+  | UnsafeJS Bool [Id] Text
+  deriving stock Show
+
+type BindingGroup = [(Id, Expr)]
 
 data Module =
   Module
   { moduleName :: Text
-  , moduleExports :: [Ident]
-  , moduleImports :: [Import]
+  , moduleImports :: [Id]
   , moduleBindings :: BindingGroup
+  }
+  deriving stock Show
+
+data Program =
+  Program
+  { programMainModule :: Id
+  , programReachable :: [Id]
+  , programModules :: [Module]
   }
   deriving stock Show

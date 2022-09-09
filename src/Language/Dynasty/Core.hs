@@ -4,27 +4,27 @@ module Language.Dynasty.Core where
 
 import Data.Text(Text)
 
-import Language.Dynasty.Syntax(Ident, NumLit)
+import Language.Dynasty.Syntax(Id, Name, Number)
 
 data Check
-  = IsNum NumLit
+  = IsNum Number
   | IsStr Text
   | IsCtor Text Int
-  | HasField Ident
+  | HasField Id
   deriving stock Show
 
 type Branch = ([(Expr, Check)], Expr)
 
 data Expr
-  = NumLit NumLit
+  = NumLit Number
   | StrLit Text
-  | Record [(Ident, Expr)]
-  | Ctor Ident [Expr]
-  | Var Ident
-  | Field Expr Ident
+  | RecLit [(Id, Expr)]
+  | CtorLit Id [Expr]
+  | Var Name
+  | Field Expr Id
   | Case [Branch]
-  | Lambda Ident Expr
+  | Lam Id Expr
   | App Expr Expr
-  | Let [(Bool, [(Ident, Expr)])] Expr
-  | UnsafeJS Bool [Ident] Text
+  | Let [(Bool, [(Id, Expr)])] Expr
+  | UnsafeJS Bool [Id] Text
   deriving stock Show

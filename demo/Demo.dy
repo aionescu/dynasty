@@ -12,7 +12,7 @@ setupBtn id text =
   then onClick el \_ -> updateValue r \v -> v + text
 and
 
-setupDigitBtn digit = setupBtn ("b" + show digit) (show digit) and
+setupDigitBtn digit = setupBtn ("b" + show digit) $ show digit and
 setupSymbolBtn name symbol = setupBtn ("b" + name) symbol and
 
 setupDelBtn =
@@ -40,9 +40,17 @@ setupComputeBtn =
   then onClick el \_ -> compute
 and
 
+symbols =
+  [ ("add", "+")
+  , ("sub", "-")
+  , ("mul", "*")
+  , ("div", "/")
+  , ("dot", ".")
+  ]
+and
+
 main =
   do   traverse setupDigitBtn (0 .. 9)
-  then traverse (uncurry setupSymbolBtn)
-        [("add", "+"), ("sub", "-"), ("mul", "*"), ("div", "/"), ("dot", ".")]
+  then traverse (uncurry setupSymbolBtn) symbols
   then setupDelBtn
   then setupComputeBtn

@@ -13,9 +13,9 @@ a = { a = 1, b = 2, c = 3, d = 4, e = 5 } and
 a' =
   case a of
   | { a = 2 } -> "a"
-  | { a, b, c, d, e } as r -> { r, fs = (a, b, c, d, e) }
+  | r@{ a, b, c, d, e } -> { r, fs = (a, b, c, d, e) }
 and
 
-main = do
-  print p' then
-  print a'
+main =
+  do   Dynasty.Prelude.print p'
+  then print a'

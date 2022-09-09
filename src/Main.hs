@@ -10,13 +10,14 @@ import System.Directory(listDirectory, doesDirectoryExist, doesFileExist)
 import System.Exit(exitFailure)
 import System.FilePath((</>), isExtensionOf)
 
-import Language.Dynasty.Parser(parseModule)
-import Language.Dynasty.Validate(validate)
-import Language.Dynasty.Simplify(simplify)
 import Language.Dynasty.Codegen(compile)
-import Opts(Opts(..), getOpts)
+import Language.Dynasty.Desugaring(desugar)
+import Language.Dynasty.NameResolution(resolveNames)
+import Language.Dynasty.Opts(Opts(..), getOpts)
+import Language.Dynasty.Parser(parse)
+import Language.Dynasty.Utils(foldMapM, showT)
+import Language.Dynasty.Validation(validate)
 import Paths_dynasty(getDataDir)
-import Utils(foldMapM, showT)
 
 showErr :: Text -> IO a
 showErr e = T.putStrLn e *> exitFailure
@@ -45,9 +46,10 @@ run Opts{..} = do
   modules <- traverse (join $ curry $ traverse T.readFile) $ coreFiles <> userFiles
 
   modules
-    & traverse (uncurry parseModule)
+    & parse
     >>= validate
-    <&> simplify
+    >>= resolveNames
+    <&> desugar
     <&> compile runtime
     & either showErr (T.writeFile $ fromMaybe (optsPath </> "main.js") optsOutPath)
 

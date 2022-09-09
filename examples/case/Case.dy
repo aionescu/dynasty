@@ -10,9 +10,9 @@ and
 f = \case
   | 0 -> ("is 0", ())
   | (a, 2) -> ("is tuple", a)
-  | { x } as y -> ("is record", x, y)
+  | y@{ x } -> ("is record", x, y)
   | Some ([2, x]) -> ("is Some", x)
-  | NaN as v' -> ("is NaN", { v' })
+  | v'@NaN -> ("is NaN", { v' })
   | Infinity -> ("is Infinity", { })
   | -Infinity -> { is = "-Infinity" }
 and

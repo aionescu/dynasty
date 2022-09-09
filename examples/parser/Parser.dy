@@ -3,11 +3,9 @@ module Parser
 import Dynasty.Prelude
 
 chars s =
-  let
-    l = length s and
-    go i = if (i == l) [] (s ! i :: go (i + 1))
-  in
-    go 0
+  let l = length s
+  and go i = if (i == l) [] (s ! i :: go (i + 1))
+  in  go 0
 and
 
 return a s = Just (a, s) and
@@ -30,12 +28,16 @@ char c = satisfy ((==) c) and
 and
 
 (<+>) a b s =
-  case a s of
-  | Nothing -> Nothing
-  | Just (a', s') ->
-      case b s' of
+  let
+    (>>=) m f =
+      case m of
       | Nothing -> Nothing
-      | Just (b', s'') -> Just ((a', b'), s'')
+      | Just a -> f a
+  in
+    -- Maybe monad
+    do   (a', s') <- a s
+    then (b', s'') <- b s'
+    then Just ((a', b'), s'')
 and
 
 run p = p . chars and

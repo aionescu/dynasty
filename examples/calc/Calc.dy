@@ -10,7 +10,7 @@ import Core.String
 setupBtn id text =
   do   r <- byId "result"
   then el <- byId id
-  then onClick el \_ -> updateValue r \v -> v + text
+  then onClick el $ updateValue r \v -> v + text
 and
 
 setupDigitBtn digit = setupBtn ("b" + show digit) $ show digit and
@@ -19,7 +19,7 @@ setupSymbolBtn name symbol = setupBtn ("b" + name) symbol and
 setupDelBtn =
   do   r <- byId "result"
   then el <- byId ("bdel")
-  then onClick el \_ -> updateValue r pop
+  then onClick el $ updateValue r pop
 and
 
 setMsg text =
@@ -37,7 +37,7 @@ and
 
 setupComputeBtn =
   do   el <- byId ("beq")
-  then onClick el \_ -> compute
+  then onClick el compute
 and
 
 symbols =

@@ -2,7 +2,6 @@ module Case
 
 import Core.Function
 import Core.IO
-import Core.List
 
 f = \case
   | 0 -> ("is 0", ())

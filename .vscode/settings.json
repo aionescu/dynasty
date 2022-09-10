@@ -1,5 +1,6 @@
 {
   "markdownlint.config": {
-    "first-line-heading": false
+    "first-line-heading": false,
+    "no-bare-urls": false
   }
 }

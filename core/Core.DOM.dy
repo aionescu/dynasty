@@ -1,19 +1,13 @@
 module Core.DOM
 "if(typeof document==='undefined')throw 'Module Core.DOM requires DOM APIs.';"
 
-import Core.IO
-
 byId id = unsafejs "({r:()=>document.getElementById(e(_id).toString())})" and
 
 value el = unsafejs "({r:()=>e(_el).value.toString()})" and
 setValue el v = unsafejs "({r:()=>{e(_el).value=e(_v);return{$:'Tuple'}}})" and
-
-updateValue el f =
-  do   v <- value el
-  then setValue el (f v)
-and
+updateValue el f = unsafejs "({r:()=>{e(_el).value=e(_f)({v:e(_el).value});return{$:'Tuple'}}})" and
 
 inner el = unsafejs "({r:()=>e(_el).innerHTML.toString()})" and
 setInner el v = unsafejs "({r:()=>{e(_el).innerHTML=e(_v);return{$:'Tuple'}}})" and
 
-onClick e f = unsafejs "({r:()=>{e(_e).onclick=ev=>e(_f)({v:ev}).r();return{$:'Tuple'}}})"
+onClick e m = unsafejs "({r:()=>{e(_e).onclick=_=>e(_m).r();return{$:'Tuple'}}})"

@@ -1,8 +1,6 @@
 module Core.String
 
-import Core.Math
-
-show a = unsafejs "show(e(_a),false)" and
+show a = unsafejs "s(e(_a),false)" and
 
 length a = unsafejs "e(_a).length" and
 (!) a i = unsafejs "e(_a)[e(_i)]" and
@@ -10,13 +8,6 @@ length a = unsafejs "e(_a).length" and
 fromCharCode a = unsafejs "String.fromCharCode(e(_a))" and
 toCharCode a = unsafejs "e(_a).charCodeAt(0)" and
 
-chars s =
-  let l = length s
-  and go i =
-    case compare i l of
-    | EQ -> []
-    | _ -> s ! i :: go (i + 1)
-  in go 0
-and
+chars s = unsafejs "{let s=e(_s),l={$:'Nil'},i=s.length;while(i--)l={$:'::',$0:{v:s[i]},$1:{v:l}};return l}" and
 
 pop s = unsafejs "e(_s).slice(0,e(_s).length-1)"

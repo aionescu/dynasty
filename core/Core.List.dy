@@ -1,6 +1,5 @@
 module Core.List
 
-import Core.IO
 import Core.Math
 import Core.Seq
 
@@ -11,7 +10,7 @@ and
 
 foldl' f z = \case
   | [] -> z
-  | a :: as -> let z' = f z a in z' `seq` foldl' f z' as
+  | a :: as -> (\z -> foldl' f z as) $! f z a
 and
 
 (<>) as bs =
@@ -40,9 +39,12 @@ take n l =
   | (n, a :: as) -> a :: take (n - 1) as
 and
 
-traverse f = \case
-  | [] -> pure ()
-  | a :: as -> f a *> traverse f as
+reverse =
+  let go acc = \case
+    | [] -> acc
+    | a :: as -> go (a :: acc) as
+  in
+  go []
 and
 
 (..) a b =

@@ -1,0 +1,4 @@
+module Core.Seq
+
+seq a b = unsafejs "{e(_a);return e(_b)}" and
+($!) f a = unsafejs "{e(_a);return e(_f)(_a)}"

@@ -2,15 +2,22 @@ module Core.List
 
 import Core.IO
 import Core.Math
+import Core.Seq
 
 foldr f z = \case
   | [] -> z
   | a :: as -> f a (foldr f z as)
 and
 
-foldl f z = \case
+foldl' f z = \case
   | [] -> z
-  | a :: as -> foldl f (f z a) as
+  | a :: as -> let z' = f z a in z' `seq` foldl' f z' as
+and
+
+(<>) as bs =
+  case as of
+  | [] -> bs
+  | a :: as -> a :: as <> bs
 and
 
 map f = \case

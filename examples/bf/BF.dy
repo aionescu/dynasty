@@ -1,8 +1,9 @@
 module BF
 
-import Core.FS
+import Core.Bool
 import Core.Function
 import Core.IO
+import Core.IO.Node
 import Core.Math
 import Core.String
 

@@ -1,5 +1,6 @@
 module Fac
 
+import Core.Function
 import Core.IO
 import Core.Math
 
@@ -15,15 +16,13 @@ fac' f = \case
   | n -> n * f (n - 1)
 and
 
--- Haskell-style `fix`
-fix f = let x = f x in x and
-facF = fix fac' and
+facF = Core.Function.fix fac' and
 
 -- Y combinator
 y f = let l = \x -> f (x x) in l l and
 facY = y fac' and
 
 main =
-  do   print (fac 100)
-  then print (facF 100)
-  then print (facY 100)
+  do   print $ fac 100
+  then print $ facF 100
+  then print $ facY 100

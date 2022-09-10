@@ -1,17 +1,14 @@
 module Core.Function
 
-($) f x = f x and
-(.) f g x = f (g x) and
-(;) f g x = g (f x) and
+id a = a and
+
+($) f a = f a and
+(.) f g a = f (g a) and
+(;) f g a = g (f a) and
 
 flip f a b = f b a and
 curry f a b = f (a, b) and
 uncurry f (a, b) = f a b and
 
-fix f = let x = f x in x and
-iterate f x = x :: iterate f (f x) and
-
-if b t e =
-  case b of
-  | True -> t
-  | False -> e
+fix f = let a = f a in a and
+iterate f a = a :: iterate f (f a)

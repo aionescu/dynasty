@@ -1,5 +1,5 @@
-module Core.FS
-"if(typeof window!=='undefined')throw 'Module Core.FS requires non-Web runtime.';const fs=require('fs');"
+module Core.IO.Node
+"if(typeof require==='undefined')throw 'Module Core.IO.Node requires Node.js APIs.';const fs=require('fs');"
 
 getArgs = unsafejswhnf "({r:()=>process.argv.slice(2).reduceRight((t,h)=>({$:'::',$0:{v:h},$1:{v:t}}),{$:'Nil'})})" and
 

@@ -1,5 +1,5 @@
-module Core.Web
-"if(typeof window==='undefined')throw 'Module Core.Web requires Web runtime.';"
+module Core.DOM
+"if(typeof document==='undefined')throw 'Module Core.DOM requires DOM APIs.';"
 
 import Core.IO
 
@@ -16,6 +16,4 @@ and
 inner el = unsafejs "({r:()=>e(_el).innerHTML.toString()})" and
 setInner el v = unsafejs "({r:()=>{e(_el).innerHTML=e(_v);return{$:'Tuple'}}})" and
 
-onClick e f = unsafejs "({r:()=>{e(_e).onclick=ev=>e(_f)({v:ev}).r();return{$:'Tuple'}}})" and
-
-evalJS js = unsafejs "({r:()=>eval(e(_js)).toString()})"
+onClick e f = unsafejs "({r:()=>{e(_e).onclick=ev=>e(_f)({v:ev}).r();return{$:'Tuple'}}})"

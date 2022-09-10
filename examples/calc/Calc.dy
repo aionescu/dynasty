@@ -1,12 +1,11 @@
 module Calc
 
-import Core.FS
+import Core.DOM
 import Core.Function
 import Core.IO
 import Core.List
 import Core.Math
 import Core.String
-import Core.Web
 
 setupBtn id text =
   do   r <- byId "result"

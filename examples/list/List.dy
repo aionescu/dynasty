@@ -16,3 +16,4 @@ main =
   then print $ map ((+) 2) $ 1 .. 10
   then print $ take 20 $ fix \a -> 1 :: a
   then print $ take 20 a
+  then print $ 1 .. 5 <> 5 .. 1

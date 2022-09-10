@@ -9,4 +9,6 @@ print a = unsafejs "({r:()=>{console.log(show(e(_a),false));return{$:'Tuple'};}}
 
 throw a = unsafejs "{throw e(_a).toString()}" and
 try a = unsafejs "{try{e(_a);return{$:'Right',$0:_a};}catch(c){return{$:'Left',$0:{v:c.toString()}}}}" and
-tryIO a = unsafejs "({r:()=>{try{const a=e(_a).r();return{$:'Right',$0:{v:a}}}catch(c){return{'$':'Left',$0:{v:c.toString()}}}}})"
+tryIO a = unsafejs "({r:()=>{try{const a=e(_a).r();return{$:'Right',$0:{v:a}}}catch(c){return{'$':'Left',$0:{v:c.toString()}}}}})" and
+
+evalJS js = unsafejs "({r:()=>eval(e(_js)).toString()})"

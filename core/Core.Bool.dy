@@ -1,0 +1,10 @@
+module Core.Bool
+
+if b t e =
+  case b of
+  | True -> t
+  | False -> e
+and
+
+(&&) a b = if a b a and
+(||) a b = if a a b

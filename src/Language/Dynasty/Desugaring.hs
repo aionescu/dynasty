@@ -45,8 +45,9 @@ desugarPat e = \case
 
 desugarCase :: Id -> [(Pat, C.Expr)] -> C.Expr
 desugarCase v bs = C.Case $ bs <&> \(p, e) ->
-  let (cs, as) = desugarPat (C.Var $ Unqual v) p
-  in (cs, C.Let [(False, swap <$> as)] e)
+  desugarPat (C.Var $ Unqual v) p <&> \case
+    [] -> e
+    as -> C.Let [(False, swap <$> as)] e
 
 desugarLam :: [Pat] -> Expr -> VarGen C.Expr
 desugarLam [] e = desugarExpr e
@@ -73,7 +74,7 @@ freeVars (C.Let bs e) =
 freeVars (C.UnsafeJS _ vs _) = S.fromList vs
 
 splitRecGroups :: [(Id, C.Expr)] -> C.BindingGroup
-splitRecGroups bs = unTree <$> G.scc g
+splitRecGroups bs = unForest $ G.scc g
   where
     vars = foldMap (S.singleton . fst) bs
     deps = bs <&> \(i, e) ->
@@ -82,10 +83,12 @@ splitRecGroups bs = unTree <$> G.scc g
 
     (g, getNode, _) = G.graphFromEdges deps
 
-    unTree (G.Node v []) = (r, [(i, e)])
-      where
-        ((r, e), i, _) = getNode v
-    unTree n = (True, toList n <&> \(getNode -> ((_, e), i, _)) -> (i, e))
+    unForest (G.Node (getNode -> ((False, e), i, _)) [] : ts) = nonRec [(i, e)] ts
+    unForest (n : ts) =  (True, toList n <&> \(getNode -> ((_, e), i, _)) -> (i, e)) : unForest ts
+    unForest [] = []
+
+    nonRec acc (G.Node (getNode -> ((False, e), i, _)) [] : ts) = nonRec ((i, e) : acc) ts
+    nonRec acc ts = (False, reverse acc) : unForest ts
 
 desugarBindingGroup :: BindingGroup -> VarGen C.BindingGroup
 desugarBindingGroup bs = splitRecGroups <$> traverse (traverse desugarExpr) bs

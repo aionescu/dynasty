@@ -141,11 +141,13 @@ number =
 strLit :: Parser Text
 strLit = lexeme (char '\"' *> manyTill L.charLiteral (char '\"') <&> T.pack) <?> "String literal"
 
-caseBranch :: Parser (Pat, Expr)
-caseBranch = symbol "|" *> ((,) <$> (pat <* symbol "->" ) <*> expr)
+caseBranches :: Parser [(Pat, Expr)]
+caseBranches =
+  optional (symbol "|")
+  *> sepBy1 ((,) <$> (pat <* symbol "->" ) <*> expr) (symbol "|")
 
 lamCase :: Parser Expr
-lamCase = symbol "case" *> (LamCase <$> many caseBranch)
+lamCase = symbol "case" *> (LamCase <$> caseBranches)
 
 lamVars :: Parser Expr
 lamVars = Lam <$> (some patSimple <* symbol "->") <*> expr
@@ -168,7 +170,7 @@ let' =
   <*> (symbol "in" *> expr)
 
 case' :: Parser Expr
-case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> many caseBranch
+case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> caseBranches
 
 unsafeJS :: Parser Expr
 unsafeJS = withWhnf <*> (btwn "[" "]" (varId `sepBy` symbol ",") <|> pure []) <*> strLit

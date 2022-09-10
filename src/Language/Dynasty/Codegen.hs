@@ -1,6 +1,7 @@
 module Language.Dynasty.Codegen(compile) where
 
 import Data.Foldable(foldMap')
+import Data.Functor((<&>))
 import Data.Text(Text)
 import Data.Text qualified as T
 
@@ -51,14 +52,15 @@ name (Qual m i) = modName m <> "." <> ident i
 compileBindingGroup :: BindingGroup -> JS
 compileBindingGroup = foldMap' compileBinding
   where
-    compileBinding (False, bs) = foldMap' (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
+    compileBinding (False, bs) =
+      "const " <> T.intercalate "," (bs <&> \(i, v) -> ident i <> "=" <> thunk v) <> ";"
     compileBinding (True, bs) = decls <> assigns
       where
-        decls = foldMap' ((\i -> "const " <> ident i <> "={};") . fst) bs
-        assigns = foldMap' (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
+        decls = "const " <> T.intercalate "," (bs <&> \(i, _) -> ident i <> "={}") <> ";"
+        assigns = foldMap' (\(i, v) -> ident i <> thunkAssign v <> ";") bs
 
 compileLet :: BindingGroup -> Expr -> JS
-compileLet bs e = "(()=>{" <> compileBindingGroup bs <> "return " <> compileExpr e <> ";})()"
+compileLet bs e = "(()=>{" <> compileBindingGroup bs <> "return " <> compileExpr e <> "})()"
 
 check :: JS -> Check -> JS
 check e (IsNum NaN) = "isNaN(" <> e <> ")"
@@ -72,7 +74,7 @@ check e (IsCtor c n) =
 check e (HasField f) = e <> "." <> ident f
 
 compileCase :: [Branch] -> JS
-compileCase = foldr branch "(()=>{throw 'Incomplete pattern match';})()"
+compileCase = foldr branch "i()"
   where
     branch ([], e) _ = compileExpr e
     branch (cs, e) r = cond <> "?" <> compileExpr e <> ":" <> r
@@ -94,8 +96,8 @@ compileExpr (CtorLit c es) = "{$:" <> showT c <> fields <> "}"
 compileExpr (Var n) = "e(" <> name n <> ")"
 compileExpr (Field e i) = "e(" <> compileExpr e <> "." <> ident i <> ")"
 compileExpr (Case bs) = compileCase bs
-compileExpr (Lam i e) = "(" <> ident i <> "=>" <> parenthesize e <> ")"
-compileExpr (App f a) = compileExpr f <> "(" <> thunk a <> ")"
+compileExpr (Lam i e) = ident i <> "=>" <> parenthesize e
+compileExpr (App f a) = parenthesizeLam f <> "(" <> thunk a <> ")"
 compileExpr (Let bs e) = compileLet bs e
 compileExpr (UnsafeJS _ _ js) = js
 
@@ -115,6 +117,15 @@ thunk e
   | isWhnf e = "{v:" <> compileExpr e <> "}"
   | otherwise = "{f:()=>" <> parenthesize e <> "}"
 
+thunkAssign :: Expr -> JS
+thunkAssign e
+  | isWhnf e = ".v=" <> compileExpr e
+  | otherwise = ".f=()=>" <> parenthesize e
+
+parenthesizeLam :: Expr -> JS
+parenthesizeLam e@Lam{} = "(" <> compileExpr e <> ")"
+parenthesizeLam e = compileExpr e
+
 parenthesize :: Expr -> JS
 parenthesize e@UnsafeJS{} = compileExpr e
 parenthesize (compileExpr -> js)
@@ -123,13 +134,13 @@ parenthesize (compileExpr -> js)
 
 compileModule :: Module -> JS
 compileModule Module{..} =
-  "const " <> modName moduleName <> "=" <> "(()=>{" <> moduleInitCode
+  modName moduleName <> "=" <> "(()=>{" <> moduleInitCode
   <> compileBindingGroup moduleBindings <> "return{"
-  <> T.intercalate "," (ident <$> moduleExports) <> "}})();"
+  <> T.intercalate "," (ident <$> moduleExports) <> "}})()"
 
 compile :: JS -> ([Module], Id) -> JS
 compile prelude (ms, main) =
   prelude
-  <> foldMap' compileModule ms
+  <> "const " <> T.intercalate "," (compileModule <$> ms) <> ";"
   <> compileExpr (Var $ Qual main "main")
-  <> ".r();\n"
+  <> ".r()\n"

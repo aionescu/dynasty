@@ -1,3 +1,0 @@
-module Dynasty.String
-
-pop s = unsafejs "e(_s).slice(0,e(_s).length-1)"

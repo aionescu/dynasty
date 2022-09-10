@@ -1,6 +1,6 @@
 module Record
 
-import Dynasty.Prelude
+import Core.IO
 
 y = 3 and
 p = Point { x = 7, y } and
@@ -17,5 +17,5 @@ a' =
 and
 
 main =
-  do   Dynasty.Prelude.print p'
-  then print a'
+  do   print p'
+  then Core.IO.print a'

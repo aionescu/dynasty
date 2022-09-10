@@ -1,11 +1,7 @@
 module Case
 
-import Dynasty.Prelude
-
-traverse f = \case
-  | [] -> pure ()
-  | x :: xs -> f x *> traverse f xs
-and
+import Core.IO
+import Core.List
 
 f = \case
   | 0 -> ("is 0", ())
@@ -22,7 +18,7 @@ main =
   [ f 0
   , f (1, 2)
   , f { x = 10 }
-  , f $ Some [2, 20]
+  , f (Some [2, 20])
   , f NaN
   , f Infinity
   , f -Infinity

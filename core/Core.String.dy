@@ -1,0 +1,22 @@
+module Core.String
+
+import Core.Math
+
+show a = unsafejs "show(e(_a),false)" and
+
+length a = unsafejs "e(_a).length" and
+(!) a i = unsafejs "e(_a)[e(_i)]" and
+
+fromCharCode a = unsafejs "String.fromCharCode(e(_a))" and
+toCharCode a = unsafejs "e(_a).charCodeAt(0)" and
+
+chars s =
+  let l = length s
+  and go i =
+    case compare i l of
+    | EQ -> []
+    | _ -> s ! i :: go (i + 1)
+  in go 0
+and
+
+pop s = unsafejs "e(_s).slice(0,e(_s).length-1)"

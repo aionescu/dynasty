@@ -1,10 +1,11 @@
 module Calc
 
-import Dynasty.Prelude
-import Dynasty.DOM
-import Dynasty.Function
-import Dynasty.List
-import Dynasty.String
+import Core.Function
+import Core.IO
+import Core.List
+import Core.Math
+import Core.String
+import Core.Web
 
 setupBtn id text =
   do   r <- byId "result"
@@ -29,10 +30,9 @@ and
 compute =
   do   r <- byId "result"
   then v <- value r
-  then
-    case attempt (evalJS v) of
-    | Nothing -> setMsg "Error"
-    | Just n -> setValue r n *> setMsg ""
+  then tryIO (evalJS v) >>= \case
+    | Left e -> setMsg e
+    | Right n -> setValue r n *> setMsg ""
 and
 
 setupComputeBtn =
@@ -50,7 +50,7 @@ symbols =
 and
 
 main =
-  do   traverse setupDigitBtn (0 .. 9)
+  do   traverse setupDigitBtn $ 0 .. 9
   then traverse (uncurry setupSymbolBtn) symbols
   then setupDelBtn
   then setupComputeBtn

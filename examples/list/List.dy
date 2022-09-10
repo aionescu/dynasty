@@ -1,37 +1,18 @@
 module List
 
-import Dynasty.Prelude
+import Core.Function
+import Core.IO
+import Core.List
+import Core.Math
+
+-- Mutual recursion
+a = 1 :: b and
+b = 2 :: a and
 
 main =
-  let take n l =
-    case (n, l) of
-    | (0, _) -> []
-    | (_, []) -> []
-    | (n, a :: as) -> a :: take (n - 1) as
-  in
-
-  let (..) a b =
-    if (a == b) [a] $
-      if (a < b)
-        (a :: (a + 1 .. b))
-        (a :: (a - 1 .. b))
-  in
-
-  let map f = \case
-    | [] -> []
-    | a :: as -> f a :: map f as
-  in
-
-  let fix f = let x = f x in x in
-
-  -- Mutual recursion
-  let b = 1 :: c
-  and c = 2 :: b
-
-  in
-    do   print $ 1 .. 15
-    then print $ 15 .. 1
-    then print $ -5 .. 5
-    then print $ map ((+) 2) $ 1 .. 10
-    then print $ take 20 $ fix \a -> 1 :: a
-    then print $ take 20 b
+  do   print $ 1 .. 15
+  then print $ 15 .. 1
+  then print $ -5 .. 5
+  then print $ map ((+) 2) $ 1 .. 10
+  then print $ take 20 $ fix \a -> 1 :: a
+  then print $ take 20 a

@@ -1,12 +1,9 @@
 module Parser
 
-import Dynasty.Prelude
-
-chars s =
-  let l = length s
-  and go i = if (i == l) [] (s ! i :: go (i + 1))
-  in  go 0
-and
+import Core.Function
+import Core.IO
+import Core.Math
+import Core.String
 
 return a s = Just (a, s) and
 fail _ = Nothing and
@@ -28,7 +25,8 @@ char c = satisfy ((==) c) and
 and
 
 (<+>) a b s =
-  let
+  let pure a = Just a
+  and
     (>>=) m f =
       case m of
       | Nothing -> Nothing
@@ -37,7 +35,7 @@ and
     -- Maybe monad
     do   (a', s') <- a s
     then (b', s'') <- b s'
-    then Just ((a', b'), s'')
+    then pure ((a', b'), s'')
 and
 
 run p = p . chars and

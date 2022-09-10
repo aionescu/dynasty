@@ -1,6 +1,8 @@
 module Math
 
-import Dynasty.Prelude
+import Core.Function
+import Core.IO
+import Core.Math
 
 not = \case
   | False -> True

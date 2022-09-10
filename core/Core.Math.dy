@@ -1,0 +1,16 @@
+module Core.Math
+
+(+) a b = unsafejs "e(_a)+e(_b)" and
+(-) a b = unsafejs "e(_a)-e(_b)" and
+(*) a b = unsafejs "e(_a)*e(_b)" and
+(/) a b = unsafejs "e(_a)/e(_b)" and
+(%) a b = unsafejs "e(_a)%e(_b)" and
+(^) a b = unsafejs "e(_a)**e(_b)" and
+
+compare a b = unsafejs "({$:e(_a)===e(_b)?'EQ':e(_a)<e(_b)?'LT':'GT'})" and
+(==) a b = unsafejs "({$:e(_a)===e(_b)?'True':'False'})" and
+(/=) a b = unsafejs "({$:e(_a)!==e(_b)?'True':'False'})" and
+(<) a b = unsafejs "({$:e(_a)<e(_b)?'True':'False'})" and
+(>) a b = unsafejs "({$:e(_a)>e(_b)?'True':'False'})" and
+(<=) a b = unsafejs "({$:e(_a)<=e(_b)?'True':'False'})" and
+(>=) a b = unsafejs "({$:e(_a)>=e(_b)?'True':'False'})"

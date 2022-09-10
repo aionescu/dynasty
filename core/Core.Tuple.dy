@@ -1,4 +1,4 @@
-module Dynasty.Tuple
+module Core.Tuple
 
 swap (a, b) = (b, a) and
 

@@ -1,0 +1,45 @@
+module Core.List
+
+import Core.IO
+import Core.Math
+
+foldr f z = \case
+  | [] -> z
+  | a :: as -> f a (foldr f z as)
+and
+
+foldl f z = \case
+  | [] -> z
+  | a :: as -> foldl f (f z a) as
+and
+
+map f = \case
+  | [] -> []
+  | a :: as -> f a :: map f as
+and
+
+filter f = \case
+  | [] -> []
+  | a :: as ->
+      case f a of
+      | True -> a :: filter f as
+      | False -> filter f as
+and
+
+take n l =
+  case (n, l) of
+  | (0, _) -> []
+  | (_, []) -> []
+  | (n, a :: as) -> a :: take (n - 1) as
+and
+
+traverse f = \case
+  | [] -> pure ()
+  | a :: as -> f a *> traverse f as
+and
+
+(..) a b =
+  case compare a b of
+  | EQ -> [a]
+  | LT -> a :: (a + 1 .. b)
+  | GT -> a :: (a - 1 .. b)

@@ -1,6 +1,6 @@
-module Dynasty.DOM
+module Core.Web
 
-import Dynasty.Prelude
+import Core.IO
 
 byId id = unsafejs "({r:()=>document.getElementById(e(_id).toString())})" and
 
@@ -17,4 +17,4 @@ setInner el v = unsafejs "({r:()=>{e(_el).innerHTML=e(_v);return{$:'Tuple'}}})" 
 
 onClick e f = unsafejs "({r:()=>{e(_e).onclick=ev=>e(_f)({v:ev}).r();return{$:'Tuple'}}})" and
 
-evalJS js = unsafejs "(eval(e(_js)).toString())"
+evalJS js = unsafejs "({r:()=>eval(e(_js)).toString()})"

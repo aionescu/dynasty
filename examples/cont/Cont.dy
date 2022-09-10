@@ -1,6 +1,8 @@
 module Cont
 
-import Dynasty.Prelude
+import Core.Function
+import Core.IO
+import Core.Math
 
 -- Implementing a Haskell-style ContT monad
 
@@ -10,7 +12,7 @@ return a = \k -> k a and
 
 (<*>) kf ka = \kb -> kf \f -> ka (kb . f) and
 
-(>>>=) ka f = \kb -> ka \a -> f a kb and
+(>>-) ka f = \kb -> ka \a -> f a kb and
 
 callCC f = \k -> f (\a -> \_ -> k a) k and
 
@@ -29,10 +31,10 @@ h x =
     case x of
     | 0 -> exit -1
     | _ ->
-        f x >>>= \y ->
-          g y >>>= \z ->
+        f x >>- \y ->
+          g y >>- \z ->
             return (z * z)
-  ) >>>= \r -> liftIO (print (r, r))
+  ) >>- \r -> liftIO (print (r, r))
 and
 
 main = run (h 3) pure

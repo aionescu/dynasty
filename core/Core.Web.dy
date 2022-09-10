@@ -1,4 +1,5 @@
 module Core.Web
+"if(typeof window==='undefined')throw 'Module Core.Web requires Web runtime.';"
 
 import Core.IO
 

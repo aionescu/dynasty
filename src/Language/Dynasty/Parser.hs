@@ -274,6 +274,7 @@ module' :: Parser Module
 module' =
   Module
   <$> (symbol "module" *> modName)
+  <*> (strLit <|> pure "")
   <*> many import'
   <*> bindingGroup
 

@@ -4,7 +4,7 @@ import Data.Foldable(foldMap')
 import Data.Text(Text)
 import Data.Text qualified as T
 
-import Language.Dynasty.Core(Branch, Check(..), Expr(..))
+import Language.Dynasty.Core
 import Language.Dynasty.Parser(varOpChars)
 import Language.Dynasty.Syntax(Id, Name(..), Number(..))
 import Language.Dynasty.Utils(imap, showT)
@@ -48,14 +48,17 @@ name :: Name -> JS
 name (Unqual i) = ident i
 name (Qual m i) = modName m <> "." <> ident i
 
-compileLet :: [(Bool, [(Id, Expr)])] -> Expr -> JS
-compileLet gs e = "(()=>{" <> foldMap' bindingGroup gs <> "return " <> compileExpr e <> ";})()"
+compileBindingGroup :: BindingGroup -> JS
+compileBindingGroup = foldMap' compileBinding
   where
-    bindingGroup (False, bs) = foldMap' (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
-    bindingGroup (True, bs) = decls <> assigns
+    compileBinding (False, bs) = foldMap' (\(i, v) -> "const " <> ident i <> "=" <> thunk v <> ";") bs
+    compileBinding (True, bs) = decls <> assigns
       where
         decls = foldMap' ((\i -> "const " <> ident i <> "={};") . fst) bs
         assigns = foldMap' (\(i, v) -> ident i <> ".f=()=>" <> parenthesize v <> ";") bs
+
+compileLet :: BindingGroup -> Expr -> JS
+compileLet bs e = "(()=>{" <> compileBindingGroup bs <> "return " <> compileExpr e <> ";})()"
 
 check :: JS -> Check -> JS
 check e (IsNum NaN) = "isNaN(" <> e <> ")"
@@ -118,10 +121,13 @@ parenthesize (compileExpr -> js)
   | T.isPrefixOf "{" js = "(" <> js <> ")"
   | otherwise = js
 
-compileModule :: (Id, Expr) -> JS
-compileModule (m, expr) = "const " <> modName m <> "=" <> compileExpr expr <> ";"
+compileModule :: Module -> JS
+compileModule Module{..} =
+  "const " <> modName moduleName <> "=" <> "(()=>{" <> moduleInitCode
+  <> compileBindingGroup moduleBindings <> "return{"
+  <> T.intercalate "," (ident <$> moduleExports) <> "}})();"
 
-compile :: JS -> ([(Id, Expr)], Id) -> JS
+compile :: JS -> ([Module], Id) -> JS
 compile prelude (ms, main) =
   prelude
   <> foldMap' compileModule ms

@@ -55,7 +55,8 @@ type BindingGroup = [(Id, Expr)]
 
 data Module =
   Module
-  { moduleName :: Text
+  { moduleName :: Id
+  , moduleInitCode :: Text
   , moduleImports :: [Id]
   , moduleBindings :: BindingGroup
   }

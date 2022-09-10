@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
 
-import Language.Dynasty.Core(Check(..), Expr(..))
+import Language.Dynasty.Core
 import Language.Dynasty.Syntax(Id, Name(..))
 import Language.Dynasty.Syntax qualified as S
 import Language.Dynasty.Utils(imap, showT)
@@ -73,7 +73,7 @@ freeVars (Let bs e) =
   S'.\\ foldMap (foldMap (S'.singleton . fst) . snd) bs
 freeVars (UnsafeJS _ vs _) = S'.fromList vs
 
-splitRecGroups :: [(Id, Expr)] -> [(Bool, [(Id, Expr)])]
+splitRecGroups :: [(Id, Expr)] -> BindingGroup
 splitRecGroups bs = unTree <$> G.scc g
   where
     vars = foldMap (S'.singleton . fst) bs
@@ -88,7 +88,7 @@ splitRecGroups bs = unTree <$> G.scc g
         ((r, e), i, _) = getNode v
     unTree n = (True, toList n <&> \(getNode -> ((_, e), i, _)) -> (i, e))
 
-desugarBindingGroup :: [(Id, S.Expr)] -> VarGen [(Bool, [(Id, Expr)])]
+desugarBindingGroup :: S.BindingGroup -> VarGen BindingGroup
 desugarBindingGroup bs = splitRecGroups <$> traverse (traverse desugarExpr) bs
 
 withFreshVar :: (Id -> VarGen a) -> VarGen a
@@ -125,15 +125,15 @@ desugarExpr (S.Do n stmts e) = desugarExpr $ foldr bind' e stmts
   where
     bind' (p, a) e' = (S.Var n `S.App` a) `S.App` S.Lam [fromMaybe S.Wildcard p] e'
 
-desugarModule :: S.Module -> (Id, Expr)
+desugarModule :: S.Module -> Module
 desugarModule S.Module{..} =
-  ( moduleName
-  , Let (runReader (desugarBindingGroup moduleBindings) 0)
-    $ RecLit
-    $ (\(i, _) -> (i, Var $ Unqual i)) <$> moduleBindings
-  )
+  Module
+  { moduleBindings = desugarBindingGroup moduleBindings `runReader` 0
+  , moduleExports = fst <$> moduleBindings
+  , ..
+  }
 
-desugar :: S.Program -> ([(Id, Expr)], Id)
+desugar :: S.Program -> ([Module], Id)
 desugar S.Program{..} =
   ( desugarModule <$> filter ((`S'.member` reachable) . S.moduleName) programModules
   , programMainModule

@@ -1,5 +1,6 @@
 module Calc
 
+import Core.FS
 import Core.Function
 import Core.IO
 import Core.List

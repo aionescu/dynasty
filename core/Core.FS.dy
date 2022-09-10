@@ -1,0 +1,9 @@
+module Core.FS
+"if(typeof window!=='undefined')throw 'Module Core.FS requires non-Web runtime.';const fs=require('fs');"
+
+getArgs = unsafejswhnf "({r:()=>process.argv.slice(2).reduceRight((t,h)=>({$:'::',$0:{v:h},$1:{v:t}}),{$:'Nil'})})" and
+
+getChar = unsafejswhnf "({r:()=>{const b=Buffer.alloc(1);fs.readSync(0,b,0,1);return b.toString('utf8');}})" and
+putChar c = unsafejs "({r:()=>{fs.writeSync(1,Buffer.from(e(_c)),0,1);return{$:'Tuple'};}})" and
+
+readFile f = unsafejs "({r:()=>fs.readFileSync(e(_f),'utf8')})"

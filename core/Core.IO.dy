@@ -9,10 +9,4 @@ print a = unsafejs "({r:()=>{console.log(show(e(_a),false));return{$:'Tuple'};}}
 
 throw a = unsafejs "{throw e(_a).toString()}" and
 try a = unsafejs "{try{e(_a);return{$:'Right',$0:_a};}catch(c){return{$:'Left',$0:{v:c.toString()}}}}" and
-tryIO a = unsafejs "({r:()=>{try{const a=e(_a).r();return{$:'Right',$0:{v:a}}}catch(c){return{'$':'Left',$0:{v:c.toString()}}}}})" and
-
-getArgs = unsafejswhnf "({r:()=>process.argv.slice(2).reduceRight((t,h)=>({$:'::',$0:{v:h},$1:{v:t}}),{$:'Nil'})})" and
-
-getChar = unsafejswhnf "({r:()=>{const b=Buffer.alloc(1);fs.readSync(0,b,0,1);return b.toString('utf8');}})" and
-putChar c = unsafejs "({r:()=>{fs.writeSync(1,Buffer.from(e(_c)),0,1);return{$:'Tuple'};}})" and
-readFile f = unsafejs "({r:()=>{return fs.readFileSync(e(_f),'utf8');}})"
+tryIO a = unsafejs "({r:()=>{try{const a=e(_a).r();return{$:'Right',$0:{v:a}}}catch(c){return{'$':'Left',$0:{v:c.toString()}}}}})"

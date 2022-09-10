@@ -25,6 +25,17 @@ data Expr
   | Case [Branch]
   | Lam Id Expr
   | App Expr Expr
-  | Let [(Bool, [(Id, Expr)])] Expr
+  | Let BindingGroup Expr
   | UnsafeJS Bool [Id] Text
+  deriving stock Show
+
+type BindingGroup = [(Bool, [(Id, Expr)])]
+
+data Module
+  = Module
+  { moduleName :: Id
+  , moduleInitCode :: Text
+  , moduleBindings :: BindingGroup
+  , moduleExports :: [Id]
+  }
   deriving stock Show

@@ -1,3 +1,5 @@
+{-# LANGUAGE StrictData #-}
+
 module Language.Dynasty.NameResolution(resolveNames) where
 
 import Control.Monad(join)
@@ -6,8 +8,8 @@ import Control.Monad.State(StateT, gets, modify, execStateT)
 import Control.Monad.Trans.Class(lift)
 import Data.Bifunctor(first)
 import Data.Foldable(foldMap', traverse_, find)
-import Data.Map(Map)
-import Data.Map qualified as M
+import Data.Map.Strict(Map)
+import Data.Map.Strict qualified as M
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)

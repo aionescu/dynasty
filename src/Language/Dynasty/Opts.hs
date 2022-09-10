@@ -1,3 +1,5 @@
+{-# LANGUAGE StrictData #-}
+
 module Language.Dynasty.Opts(Opts(..), getOpts) where
 
 import Options.Applicative

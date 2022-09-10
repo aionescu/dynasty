@@ -15,7 +15,7 @@ import Data.Set qualified as S
 import Data.Text(Text)
 
 import Language.Dynasty.Syntax
-import Language.Dynasty.Utils(err, findDuplicate, showT)
+import Language.Dynasty.Utils(err, findDup, showT)
 
 data Env =
   Env
@@ -37,10 +37,9 @@ validatePat NumPat{} = pure ()
 validatePat StrPat{} = pure ()
 validatePat (TupPat es) = traverse_ validatePat es
 validatePat (ListPat es) = traverse_ validatePat es
-validatePat (RecPat es) =
-  case findDuplicate $ fst <$> es of
-    Just f -> err $ "Duplicate record field " <> f
-    Nothing -> traverse_ (\(f, e) -> maybe (addVar f) validatePat e) es
+validatePat (RecPat es) = do
+  findDup (fst <$> es) ("Duplicate record field " <>)
+  traverse_ (\(f, e) -> maybe (addVar f) validatePat e) es
 validatePat (VarPat v) = addVar v
 validatePat (CtorPat _ es) = traverse_ validatePat es
 validatePat Wildcard = pure ()
@@ -69,10 +68,9 @@ resolveExpr e@NumLit{} = pure e
 resolveExpr e@StrLit{} = pure e
 resolveExpr (TupLit es) = TupLit <$> traverse resolveExpr es
 resolveExpr (ListLit es) = ListLit <$> traverse resolveExpr es
-resolveExpr (RecLit fs) =
-  case findDuplicate $ fst <$> fs of
-    Just f -> err $ "Duplicate record field " <> f
-    Nothing -> RecLit <$> traverse (traverse (traverse resolveExpr)) fs
+resolveExpr (RecLit fs) = do
+  findDup (fst <$> fs) ("Duplicate record field " <>)
+  RecLit <$> traverse (traverse (traverse resolveExpr)) fs
 resolveExpr (CtorLit c es) = CtorLit c <$> traverse resolveExpr es
 resolveExpr (Var (Unqual v)) = ask >>= \Env{..} ->
   case vars M.!? v of
@@ -104,11 +102,10 @@ withVars :: [Id] -> Reso a -> Reso a
 withVars vs = local (\e@Env{..} -> e{vars = M.fromList ((\i -> (i, Unqual i)) <$> vs) <> vars})
 
 resolveBindingGroup :: BindingGroup -> Reso BindingGroup
-resolveBindingGroup bs =
-  let vars = fst <$> bs in
-  case findDuplicate vars of
-    Just i -> err $ "Duplicate definition of " <> i <> " in the same binding group"
-    Nothing -> withVars vars $ traverse (traverse resolveExpr) bs
+resolveBindingGroup bs = do
+  let vars = fst <$> bs
+  findDup vars \i -> "Duplicate definition of " <> i <> " in the same binding group"
+  withVars vars $ traverse (traverse resolveExpr) bs
 
 checkImports :: Map Id (Set Id) -> [Id] -> Reso ()
 checkImports exports imports =

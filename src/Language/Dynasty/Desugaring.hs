@@ -6,35 +6,34 @@ import Data.Functor((<&>))
 import Data.Graph qualified as G
 import Data.Maybe(fromMaybe)
 import Data.Set(Set)
-import Data.Set qualified as S'
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Traversable(for)
 import Data.Tuple(swap)
 
-import Language.Dynasty.Core
-import Language.Dynasty.Syntax(Id, Name(..))
-import Language.Dynasty.Syntax qualified as S
+import Language.Dynasty.Core qualified as C
+import Language.Dynasty.Syntax
 import Language.Dynasty.Utils(imap, showT)
 
 type VarGen = Reader Int
 
-desugarPat :: Expr -> S.Pat -> ([(Expr, Check)], [(Expr, Id)])
+desugarPat :: C.Expr -> Pat -> ([(C.Expr, C.Check)], [(C.Expr, Id)])
 desugarPat e = \case
-  S.NumPat n -> ck e $ IsNum n
-  S.StrPat s -> ck e $ IsStr s
-  S.TupPat ps -> desugarPat e $ S.CtorPat "Tuple" ps
-  S.ListPat ps -> desugarPat e $ unroll ps
-  S.RecPat fs -> combine $ fs <&> \(f, p) ->
-    ck e (HasField f) <#> let e' = Field e f in maybe (asg e' f) (desugarPat e') p
-  S.VarPat v -> asg e v
-  S.CtorPat c ps ->
-    ck e (IsCtor c $ length ps)
-    <#> combine (imap (\i -> desugarPat (Field e $ "$" <> showT i)) ps)
-  S.Wildcard -> ([], [])
-  S.As v p -> desugarPat e p <#> asg e v
+  NumPat n -> ck e $ C.IsNum n
+  StrPat s -> ck e $ C.IsStr s
+  TupPat ps -> desugarPat e $ CtorPat "Tuple" ps
+  ListPat ps -> desugarPat e $ unroll ps
+  RecPat fs -> combine $ fs <&> \(f, p) ->
+    ck e (C.HasField f) <#> let e' = C.Field e f in maybe (asg e' f) (desugarPat e') p
+  VarPat v -> asg e v
+  CtorPat c ps ->
+    ck e (C.IsCtor c $ length ps)
+    <#> combine (imap (\i -> desugarPat (C.Field e $ "$" <> showT i)) ps)
+  Wildcard -> ([], [])
+  As v p -> desugarPat e p <#> asg e v
 
   where
-    unroll = foldr (\h t -> S.CtorPat "::" [h, t]) $ S.CtorPat "Nil" []
+    unroll = foldr (\h t -> CtorPat "::" [h, t]) $ CtorPat "Nil" []
 
     ck e' c = ([(e', c)], [])
     asg e' v = ([], [(e', v)])
@@ -44,42 +43,42 @@ desugarPat e = \case
     (c1, a1) <#> (c2, a2) = (c1 <> c2, a1 <> a2)
     infixr 6 <#>
 
-desugarCase :: Id -> [(S.Pat, Expr)] -> Expr
-desugarCase v bs = Case $ bs <&> \(p, e) ->
-  let (cs, as) = desugarPat (Var $ Unqual v) p
-  in (cs, Let [(False, swap <$> as)] e)
+desugarCase :: Id -> [(Pat, C.Expr)] -> C.Expr
+desugarCase v bs = C.Case $ bs <&> \(p, e) ->
+  let (cs, as) = desugarPat (C.Var $ Unqual v) p
+  in (cs, C.Let [(False, swap <$> as)] e)
 
-desugarLam :: [S.Pat] -> S.Expr -> VarGen Expr
+desugarLam :: [Pat] -> Expr -> VarGen C.Expr
 desugarLam [] e = desugarExpr e
 desugarLam (p : ps) e =
   case p of
-    S.Wildcard -> withFreshVar \v -> Lam v <$> desugarLam ps e
-    S.VarPat v -> Lam v <$> desugarLam ps e
-    _ -> withFreshVar \v -> Lam v <$> desugarExpr (S.Case (S.Var $ S.Unqual v) [(p, S.Lam ps e)])
+    Wildcard -> withFreshVar \v -> C.Lam v <$> desugarLam ps e
+    VarPat v -> C.Lam v <$> desugarLam ps e
+    _ -> withFreshVar \v -> C.Lam v <$> desugarExpr (Case (Var $ Unqual v) [(p, Lam ps e)])
 
-freeVars :: Expr -> Set Id
-freeVars NumLit{} = S'.empty
-freeVars StrLit{} = S'.empty
-freeVars (RecLit fs) = foldMap (freeVars . snd) fs
-freeVars (CtorLit _ es) = foldMap freeVars es
-freeVars (Var (Unqual v)) = S'.singleton v
-freeVars (Var Qual{}) = S'.empty
-freeVars (Field e _) = freeVars e
-freeVars (Case bs) = foldMap (\(cs, e) -> foldMap (freeVars . fst) cs <> freeVars e) bs
-freeVars (Lam v e) = freeVars e S'.\\ S'.singleton v
-freeVars (App f a) = freeVars f <> freeVars a
-freeVars (Let bs e) =
+freeVars :: C.Expr -> Set Id
+freeVars C.NumLit{} = S.empty
+freeVars C.StrLit{} = S.empty
+freeVars (C.RecLit fs) = foldMap (freeVars . snd) fs
+freeVars (C.CtorLit _ es) = foldMap freeVars es
+freeVars (C.Var (Unqual v)) = S.singleton v
+freeVars (C.Var Qual{}) = S.empty
+freeVars (C.Field e _) = freeVars e
+freeVars (C.Case bs) = foldMap (\(cs, e) -> foldMap (freeVars . fst) cs <> freeVars e) bs
+freeVars (C.Lam v e) = freeVars e S.\\ S.singleton v
+freeVars (C.App f a) = freeVars f <> freeVars a
+freeVars (C.Let bs e) =
   (freeVars e <> foldMap (foldMap (freeVars . snd) . snd) bs)
-  S'.\\ foldMap (foldMap (S'.singleton . fst) . snd) bs
-freeVars (UnsafeJS _ vs _) = S'.fromList vs
+  S.\\ foldMap (foldMap (S.singleton . fst) . snd) bs
+freeVars (C.UnsafeJS _ vs _) = S.fromList vs
 
-splitRecGroups :: [(Id, Expr)] -> BindingGroup
+splitRecGroups :: [(Id, C.Expr)] -> C.BindingGroup
 splitRecGroups bs = unTree <$> G.scc g
   where
-    vars = foldMap (S'.singleton . fst) bs
+    vars = foldMap (S.singleton . fst) bs
     deps = bs <&> \(i, e) ->
-      let free = freeVars e `S'.intersection` vars
-      in ((i `S'.member` free, e), i, S'.toList free)
+      let free = freeVars e `S.intersection` vars
+      in ((i `S.member` free, e), i, S.toList free)
 
     (g, getNode, _) = G.graphFromEdges deps
 
@@ -88,7 +87,7 @@ splitRecGroups bs = unTree <$> G.scc g
         ((r, e), i, _) = getNode v
     unTree n = (True, toList n <&> \(getNode -> ((_, e), i, _)) -> (i, e))
 
-desugarBindingGroup :: S.BindingGroup -> VarGen BindingGroup
+desugarBindingGroup :: BindingGroup -> VarGen C.BindingGroup
 desugarBindingGroup bs = splitRecGroups <$> traverse (traverse desugarExpr) bs
 
 withFreshVar :: (Id -> VarGen a) -> VarGen a
@@ -96,47 +95,47 @@ withFreshVar f = do
   i <- ask
   local succ $ f $ "_" <> showT i
 
-desugarExpr :: S.Expr -> VarGen Expr
-desugarExpr (S.NumLit n) = pure $ NumLit n
-desugarExpr (S.StrLit s) = pure $ StrLit s
-desugarExpr (S.TupLit es) = CtorLit "Tuple" <$> traverse desugarExpr es
-desugarExpr (S.ListLit es) =
-  foldrM (\h t -> (\h' -> CtorLit "::" [h', t]) <$> desugarExpr h) (CtorLit "Nil" []) es
-desugarExpr (S.RecLit es) = RecLit <$> for es \case
-  (i, Nothing) -> pure (i, Var $ Unqual i)
+desugarExpr :: Expr -> VarGen C.Expr
+desugarExpr (NumLit n) = pure $ C.NumLit n
+desugarExpr (StrLit s) = pure $ C.StrLit s
+desugarExpr (TupLit es) = C.CtorLit "Tuple" <$> traverse desugarExpr es
+desugarExpr (ListLit es) =
+  foldrM (\h t -> (\h' -> C.CtorLit "::" [h', t]) <$> desugarExpr h) (C.CtorLit "Nil" []) es
+desugarExpr (RecLit es) = C.RecLit <$> for es \case
+  (i, Nothing) -> pure (i, C.Var $ Unqual i)
   (i, Just e) -> (i,) <$> desugarExpr e
-desugarExpr (S.Var v) = pure $ Var v
-desugarExpr (S.RecField e f) = (`Field` f) <$> desugarExpr e
-desugarExpr (S.CtorField e i) = (`Field` ("$" <> showT i)) <$> desugarExpr e
-desugarExpr (S.Case e bs)
-  | S.Var (S.Unqual v) <- e, T.head v == '_' = desugarCase v <$> traverse (traverse desugarExpr) bs
+desugarExpr (Var v) = pure $ C.Var v
+desugarExpr (RecField e f) = (`C.Field` f) <$> desugarExpr e
+desugarExpr (CtorField e i) = (`C.Field` ("$" <> showT i)) <$> desugarExpr e
+desugarExpr (Case e bs)
+  | Var (Unqual v) <- e, T.head v == '_' = desugarCase v <$> traverse (traverse desugarExpr) bs
   | otherwise = withFreshVar \v ->
-      (\e' -> Let [(False, [(v, e')])])
+      (\e' -> C.Let [(False, [(v, e')])])
       <$> desugarExpr e
       <*> (desugarCase v <$> traverse (traverse desugarExpr) bs)
-desugarExpr (S.Lam vs e) = desugarLam vs e
-desugarExpr (S.LamCase bs) = withFreshVar \v -> Lam v <$> desugarExpr (S.Case (S.Var $ S.Unqual v) bs)
-desugarExpr (S.CtorLit ctor es) = CtorLit ctor <$> traverse desugarExpr es
-desugarExpr (S.App f a) = App <$> desugarExpr f <*> desugarExpr a
-desugarExpr (S.Let [] e) = desugarExpr e
-desugarExpr (S.Let bs e) = Let <$> desugarBindingGroup bs <*> desugarExpr e
-desugarExpr (S.UnsafeJS whnf vs js) = pure $ UnsafeJS whnf vs js
-desugarExpr (S.Do n stmts e) = desugarExpr $ foldr bind' e stmts
+desugarExpr (Lam vs e) = desugarLam vs e
+desugarExpr (LamCase bs) = withFreshVar \v -> C.Lam v <$> desugarExpr (Case (Var $ Unqual v) bs)
+desugarExpr (CtorLit ctor es) = C.CtorLit ctor <$> traverse desugarExpr es
+desugarExpr (App f a) = C.App <$> desugarExpr f <*> desugarExpr a
+desugarExpr (Let [] e) = desugarExpr e
+desugarExpr (Let bs e) = C.Let <$> desugarBindingGroup bs <*> desugarExpr e
+desugarExpr (UnsafeJS whnf vs js) = pure $ C.UnsafeJS whnf vs js
+desugarExpr (Do n stmts e) = desugarExpr $ foldr bind' e stmts
   where
-    bind' (p, a) e' = (S.Var n `S.App` a) `S.App` S.Lam [fromMaybe S.Wildcard p] e'
+    bind' (p, a) e' = (Var n `App` a) `App` Lam [fromMaybe Wildcard p] e'
 
-desugarModule :: S.Module -> Module
-desugarModule S.Module{..} =
-  Module
+desugarModule :: Module -> C.Module
+desugarModule Module{..} =
+  C.Module
   { moduleBindings = desugarBindingGroup moduleBindings `runReader` 0
   , moduleExports = fst <$> moduleBindings
   , ..
   }
 
-desugar :: S.Program -> ([Module], Id)
-desugar S.Program{..} =
-  ( desugarModule <$> filter ((`S'.member` reachable) . S.moduleName) programModules
+desugar :: Program -> ([C.Module], Id)
+desugar Program{..} =
+  ( desugarModule <$> filter ((`S.member` reachable) . moduleName) programModules
   , programMainModule
   )
   where
-    reachable = S'.fromList programReachable
+    reachable = S.fromList programReachable

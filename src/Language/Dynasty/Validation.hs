@@ -10,15 +10,13 @@ import Data.Text(Text)
 import Data.Text qualified as T
 
 import Language.Dynasty.Syntax(Module(..), Program(..))
-import Language.Dynasty.Utils(err, findDuplicate, showT)
+import Language.Dynasty.Utils(err, findDup, showT)
 
 type Valid = Either Text
 
 modulesUnique :: Program -> Valid Program
 modulesUnique p@Program{..} =
-  case findDuplicate $ moduleName <$> programModules of
-    Just m -> err $ "Duplicate definition of module " <> m
-    Nothing -> pure p
+  p <$ findDup (moduleName <$> programModules) ("Duplicate definition of module " <>)
 
 findMainModule :: Program -> Valid Program
 findMainModule p@Program{..} =

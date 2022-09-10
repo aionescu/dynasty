@@ -14,7 +14,6 @@ import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 
 import Language.Dynasty.Syntax
-import Language.Dynasty.Utils((...))
 
 type Parser = Parsec Void Text
 
@@ -100,10 +99,10 @@ opCtor :: Parser Text
 opCtor = operator (char ':')
 
 opInfixE :: Parser (Expr -> Expr -> Expr)
-opInfixE = between (char '`') (char '`') varName <&> \o a b -> (Var (Unqual o) `App` a) `App` b
+opInfixE = between (char '`') (symbol "`") varName <&> \o a b -> (Var (Unqual o) `App` a) `App` b
 
 opInfixCtor :: Parser Text
-opInfixCtor = between (char '`') (char '`') ctorName
+opInfixCtor = between (char '`') (symbol "`") ctorName
 
 varId :: Parser Text
 varId = varName <|> try (parens $ operator $ oneOf varOpChars)
@@ -182,7 +181,7 @@ do' = Do (Unqual ">>=") <$> (symbol "do" *> some (try $ stmt <* symbol "then")) 
     stmt = (,) <$> optional (try $ patSimple <* symbol "<-") <*> expr
 
 qualVar :: Parser Expr
-qualVar = Var ... Qual <$> try (T.intercalate "." <$> some (ident upperChar <* char '.')) <*> varId
+qualVar = (Var .) . Qual <$> try (T.intercalate "." <$> some (ident upperChar <* char '.')) <*> varId
 
 exprSimple :: Parser Expr
 exprSimple =

@@ -2,32 +2,48 @@
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "Dynasty",
 	"patterns": [
-		{ "include": "#keywords" },
-		{ "include": "#numbers" },
-		{ "include": "#ctors" },
-		{ "include": "#comments" },
-		{ "include": "#strings" }
+		{ "include": "#comment" },
+		{ "include": "#keyword" },
+		{ "include": "#infixOp" },
+		{ "include": "#infixVar" },
+		{ "include": "#number" },
+		{ "include": "#ctor" },
+		{ "include": "#string" }
 	],
 	"repository": {
-		"keywords": {
+		"keyword": {
 			"patterns": [{
 				"name": "keyword.control.dy",
 				"match": "\\b(unsafejs|unsafejswhnf|module|import|case|of|let|and|in|do|then)\\b"
 			}]
     },
-    "numbers": {
+    "infixOp": {
+      "patterns": [{
+        "name": "keyword.control.dy",
+        "match": "[:!#\\$%&\\*\\+\\./<=>\\?@\\\\\\^\\|\\-~;]+"
+      }]
+    },
+    "infixVar": {
+			"begin": "`",
+			"end": "`",
+			"patterns": [{
+        "name": "keyword.control.dy",
+        "match": "\\b([a-z][a-zA-Z0-9']*)\\b"
+      }]
+    },
+    "number": {
       "patterns": [{
         "name": "constant.numeric.dy",
         "match": "\\b(NaN|-?(Infinity|[0-9]+(\\.[0-9]+)?(e-?[0-9]+)?))\\b"
       }]
     },
-    "ctors": {
+    "ctor": {
       "patterns": [{
         "name": "support.function.dy",
         "match": "\\b[A-Z][a-zA-Z0-9']*\\b"
       }]
     },
-    "comments": {
+    "comment": {
       "patterns": [{
         "name": "comment.double-dash.dy",
         "match": "--.*$"
@@ -43,16 +59,14 @@
         "patterns": [{ "include": "#comments" }]
       }]
     },
-		"strings": {
+		"string": {
 			"name": "string.quoted.double.dy",
 			"begin": "\"",
 			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.dy",
-					"match": "\\\\."
-				}
-			]
+			"patterns": [{
+        "name": "constant.character.escape.dy",
+        "match": "\\\\."
+      }]
     }
 	},
 	"scopeName": "source.dy"

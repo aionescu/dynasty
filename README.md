@@ -8,7 +8,11 @@ Dynasty is a dynamically-typed, lazily evaluated, purely functional programming 
 
 ## Examples
 
-You can find some Dynasty programs in the [examples](examples) folder, and the standard library (called `Core`) lives in the [core](core) folder.
+You can find some Dynasty programs in the [examples](examples) folder.
+
+The most interesting ones are the [Brainfuck interpreter](examples/bf) and the [Calculator web app](examples/calc).
+
+The standard library and runtime code can be found in the [core](core) folder.
 
 ## Building & running the compiler
 
@@ -27,7 +31,7 @@ cabal run . -- <target-dir>
 
 The first invocation may take a while, since it will also build the compiler's dependencies.
 
-To run the resulting JavaScript, you can include it in a `<script>` tag inside a HTML document to load it in the browser, or run it with [Node.js](https://nodejs.org/en/) or [Deno](https://deno.land/).
+By default, the compiler outputs a file named `main.js`. You can include it in a `<script>` tag inside an HTML document to load it in the browser, or run it directly using a JS runtime like [Node.js](https://nodejs.org/en/), [Deno](https://deno.land/), or [Bun](https://bun.sh/).
 
 ## VS Code Extension
 
@@ -35,5 +39,6 @@ To install the VS Code extension, simply run the `install-vscode-ext.sh` script.
 
 ## License
 
-This repository is licensed under the terms of the GNU General Public License v3.
+This repository is licensed under the GNU General Public License v3.
+
 For more details, see [the license file](LICENSE.txt).

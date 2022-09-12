@@ -1,4 +1,4 @@
-const b=()=>{throw "Self-recursive thunk"},
+"use strict";const b=()=>{throw "Self-recursive thunk"},
 i=()=>{throw "Incomplete pattern match"},
 e=t=>{if(t.f){const f=t.f;t.f=b;t.v=f();t.f=undefined}return t.v},
 s=(a,p)=>{

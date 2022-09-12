@@ -14,12 +14,12 @@ f = \case
 and
 
 main =
-  traverse (print . f)
-  [ 0
-  , (1, 2)
-  , { x = 10 }
-  , Some [2, 20]
-  , NaN
-  , Infinity
-  , -Infinity
-  ]
+  print . f `forEach`
+    [ 0
+    , (1, 2)
+    , { x = 10 }
+    , Some [2, 20]
+    , NaN
+    , Infinity
+    , -Infinity
+    ]

@@ -49,7 +49,7 @@ evalOp op tape@{ left, crr, right } =
   | MovL -> (case left of h :: t -> pure { left = t, crr = h, right = crr :: right })
   | MovR -> (case right of h :: t -> pure { left = crr :: left, crr = h, right = t })
   | Read -> getChar >>= \c -> (\c -> pure { left, crr = c, right }) $! toCharCode c
-  | Write -> putChar (fromCharCode crr) *> pure tape
+  | Write -> do putChar (fromCharCode crr) then pure tape
   | Loop ops ->
       case crr of
       | 0 -> pure tape
@@ -62,7 +62,7 @@ evalOps ops tape =
   | op :: ops -> evalOp op tape >>= evalOps ops
 and
 
-eval ops = evalOps ops tape *> pure () and
+eval ops = evalOps ops tape and
 
 main =
   getArgs >>= \case

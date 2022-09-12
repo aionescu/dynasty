@@ -3,6 +3,7 @@ module Calc
 import Core.DOM
 import Core.Function
 import Core.IO
+import Core.IO.Unsafe
 import Core.List
 import Core.Math
 import Core.String
@@ -18,7 +19,7 @@ setupSymbolBtn name symbol = setupBtn ("b" + name) symbol and
 
 setupDelBtn =
   do   r <- byId "result"
-  then el <- byId ("bdel")
+  then el <- byId "bdel"
   then onClick el $ updateValue r pop
 and
 
@@ -30,9 +31,9 @@ and
 compute =
   do   r <- byId "result"
   then v <- value r
-  then tryIO (evalJS v) >>= \case
+  then tryIO (unsafeEvalJS v) >>= \case
     | Left e -> setMsg e
-    | Right n -> setValue r n *> setMsg ""
+    | Right n -> do setValue r n then setMsg ""
 and
 
 setupComputeBtn =
@@ -50,7 +51,7 @@ symbols =
 and
 
 main =
-  do   traverse setupDigitBtn $ 0 .. 9
-  then traverse (uncurry setupSymbolBtn) symbols
+  do   setupDigitBtn `forEach` 0 .. 9
+  then uncurry setupSymbolBtn `forEach` symbols
   then setupDelBtn
   then setupComputeBtn

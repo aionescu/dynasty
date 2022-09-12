@@ -180,7 +180,7 @@ unsafeJS = withWhnf <*> (btwn "[" "]" (varId `sepBy` symbol ",") <|> pure []) <*
 do' :: Parser Expr
 do' = Do (Unqual ">>=") <$> (symbol "do" *> some (try $ stmt <* symbol "then")) <*> expr
   where
-    stmt = (,) <$> optional (try $ patSimple <* symbol "<-") <*> expr
+    stmt = (,) <$> optional (try $ pat <* symbol "<-") <*> expr
 
 qualVar :: Parser Expr
 qualVar = (Var .) . Qual <$> try (T.intercalate "." <$> some (ident upperChar <* char '.')) <*> varId

@@ -7,6 +7,7 @@ s=(a,p)=>{
   else if(typeof a==="string")r=JSON.stringify(a);
   else if(typeof a==="function")r="<λ>";
   else if(a.r)r="<IO>";
+  else if(a.c)r="<Ref>";
   else if(Object.keys(a).length===0)r="{ }";
   else if(!a.$)r="{ "+Object.entries(a).map(f=>f[0].slice(1).replace("_","'")+" = "+s(e(f[1]),false)).join(", ")+" }";
   else if(a.$==="Tuple"&&!(a.$0&&!a.$1))r="("+Object.values(a).slice(1).map(f=>s(e(f),p)).join(", ")+")";

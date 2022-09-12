@@ -1,0 +1,30 @@
+module Ref
+
+import Core.Function
+import Core.IO
+import Core.IO.Ref
+import Core.Math
+import Core.Seq
+
+main =
+  do   r <- mkRef 2
+  then 2 <- readRef r
+  then () <- writeRef r 3
+  then 3 <- readRef r
+  then () <- updateRef r ((+) 1)
+  then 4 <- readRef r
+
+  then Right ()  <- tryIO (writeRef r $  throw "Aa")
+  then () <- writeRef r 5
+  then Left "Aa" <- tryIO (writeRef r $! throw "Aa")
+  then 5 <- readRef r
+
+  then Right q   <- tryIO (mkRef $  throw "Bb")
+  then Left "Bb" <- tryIO (mkRef $! throw "Bb")
+
+  then Right ()  <- tryIO (updateRef  q $ \_ -> throw "Cc")
+  then () <- writeRef q 6
+  then Left "Cc" <- tryIO (updateRef' q $ \_ -> throw "Cc")
+  then 6 <- readRef q
+
+  then putStrLn "All tests passed"

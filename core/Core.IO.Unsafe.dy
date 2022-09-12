@@ -1,0 +1,4 @@
+module Core.IO.Unsafe
+
+unsafeEvalJS js = unsafejs "({r:()=>eval(e(_js)).toString()})" and
+unsafePerformIO m = unsafejs "e(_m).r()"

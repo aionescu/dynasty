@@ -1,18 +1,24 @@
 module Core.IO
 
 pure a = unsafejs "({r:()=>e(_a)})" and
-(>>=) a f = unsafejs "({r:()=>e(_f)({v:e(_a).r()}).r()})" and
-(*>) a b = unsafejs "({r:()=>{e(_a).r();return e(_b).r()}})" and
+(>>=) m f = unsafejs "({r:()=>e(_f)({v:e(_m).r()}).r()})" and
 
 putStrLn a = unsafejs "({r:()=>{console.log(e(_a));return{$:'Tuple'};}})" and
 print a = unsafejs "({r:()=>{console.log(s(e(_a),false));return{$:'Tuple'};}})" and
 
 throw a = unsafejs "{throw e(_a).toString()}" and
+throwIO a = unsafejs "({r:()=>{throw e(_a).toString()}})" and
 try a = unsafejs "{try{e(_a);return{$:'Right',$0:_a};}catch(c){return{$:'Left',$0:{v:c.toString()}}}}" and
 tryIO a = unsafejs "({r:()=>{try{const a=e(_a).r();return{$:'Right',$0:{v:a}}}catch(c){return{'$':'Left',$0:{v:c.toString()}}}}})" and
 
-evalJS js = unsafejs "({r:()=>eval(e(_js)).toString()})" and
+forEach f = \case
+  | [] -> pure ()
+  | a :: as -> do f a then forEach f as
+and
 
 traverse f = \case
   | [] -> pure ()
-  | a :: as -> f a *> traverse f as
+  | a :: as ->
+      do   a <- f a
+      then as <- traverse f as
+      then pure (a :: as)

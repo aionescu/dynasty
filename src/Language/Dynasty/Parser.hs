@@ -38,9 +38,6 @@ symbol = L.symbol sc
 btwn :: Text -> Text -> Parser a -> Parser a
 btwn = between `on` symbol
 
-parens :: Parser a -> Parser a
-parens = btwn "(" ")"
-
 reservedNames :: [Text]
 reservedNames =
   [ "unsafejs", "unsafejswhnf"
@@ -70,9 +67,9 @@ varOpChars = "!#$%&*+./<=>?@\\^|-~;"
 opChars :: String
 opChars = ':' : varOpChars
 
-operator :: Parser Char -> Parser Text
-operator fstChar =
-  try (notReserved . T.pack =<< lexeme ((:) <$> fstChar <*> many opChar) <?> "Operator")
+operator' :: Parser Char -> Parser Text
+operator' fstChar =
+  try (notReserved . T.pack =<< ((:) <$> fstChar <*> many opChar) <?> "Operator")
   where
     opChar = oneOf opChars
 
@@ -80,11 +77,20 @@ operator fstChar =
       | i `elem` reservedOps = fail $ "Reserved operator " <> show i
       | otherwise = pure i
 
+operator :: Parser Char -> Parser Text
+operator = lexeme . operator'
+
+varName' :: Parser Text
+varName' = ident lowerChar
+
 varName :: Parser Text
-varName = lexeme $ ident lowerChar
+varName = lexeme varName'
+
+ctorName' :: Parser Text
+ctorName' = ident upperChar
 
 ctorName :: Parser Text
-ctorName = lexeme $ ident upperChar
+ctorName = lexeme ctorName'
 
 data Fixity = L | R
 
@@ -99,19 +105,19 @@ opCtor :: Parser Text
 opCtor = operator (char ':')
 
 opInfixE :: Parser (Expr -> Expr -> Expr)
-opInfixE = between (char '`') (symbol "`") varName <&> \o a b -> (Var (Unqual o) `App` a) `App` b
+opInfixE = between (char '`') (symbol "`") varName' <&> \o a b -> (Var (Unqual o) `App` a) `App` b
 
 opInfixCtor :: Parser Text
 opInfixCtor = between (char '`') (symbol "`") ctorName
 
 varId :: Parser Text
-varId = varName <|> try (parens $ operator $ oneOf varOpChars)
+varId = varName <|> try (between (char '(') (symbol ")") $ operator' $ oneOf varOpChars)
 
 ctorId :: Parser Text
-ctorId = ctorName <|> try (parens $ operator $ char ':')
+ctorId = ctorName <|> try (between (char '(') (symbol ")") $ operator' $ char ':')
 
 tupLit :: ([a] -> a) -> Parser a -> Parser a
-tupLit mk term = parens $ mkTup <$> (try term `sepBy` symbol ",")
+tupLit mk term = btwn "(" ")" $ mkTup <$> (try term `sepBy` symbol ",")
   where
     mkTup [a] = a
     mkTup l = mk l
@@ -183,7 +189,7 @@ do' = Do (Unqual ">>=") <$> (symbol "do" *> some (try $ stmt <* symbol "then")) 
     stmt = (,) <$> optional (try $ pat <* symbol "<-") <*> expr
 
 qualVar :: Parser Expr
-qualVar = (Var .) . Qual <$> try (T.intercalate "." <$> some (ident upperChar <* char '.')) <*> varId
+qualVar = (Var .) . Qual <$> try (T.intercalate "." <$> some (ctorName' <* char '.')) <*> varId
 
 exprSimple :: Parser Expr
 exprSimple =
@@ -266,7 +272,7 @@ expr :: Parser Expr
 expr = makeExprParser exprApp exprOps
 
 modName :: Parser Id
-modName = lexeme $ T.intercalate "." <$> ident upperChar `sepBy1` char '.'
+modName = lexeme $ T.intercalate "." <$> ctorName' `sepBy1` char '.'
 
 import' :: Parser Id
 import' = symbol "import" *> modName

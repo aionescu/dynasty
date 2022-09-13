@@ -1,6 +1,7 @@
 module Language.Dynasty.Validation(validate) where
 
 import Control.Monad((>=>))
+import Control.Monad.Except(throwError)
 import Data.Containers.ListUtils(nubOrd)
 import Data.Foldable(toList)
 import Data.Functor((<&>))
@@ -10,7 +11,7 @@ import Data.Text(Text)
 import Data.Text qualified as T
 
 import Language.Dynasty.Syntax(Module(..), Program(..))
-import Language.Dynasty.Utils(err, findDup, showT)
+import Language.Dynasty.Utils(findDup, showT)
 
 type Valid = Either Text
 
@@ -21,9 +22,9 @@ modulesUnique p@Program{..} =
 findMainModule :: Program -> Valid Program
 findMainModule p@Program{..} =
   case filter (elem "main" . fmap fst . moduleBindings) programModules of
-    [] -> err "No main module found"
+    [] -> throwError "No main module found"
     [Module{..}] -> pure p{programMainModule = moduleName}
-    ms -> err $ "Multiple suitable main modules found: " <> T.intercalate ", " (moduleName <$> ms)
+    ms -> throwError $ "Multiple suitable main modules found: " <> T.intercalate ", " (moduleName <$> ms)
 
 topSortModules :: Program -> Valid Program
 topSortModules p@Program{..} =
@@ -31,7 +32,7 @@ topSortModules p@Program{..} =
   where
     unForest [] = pure []
     unForest (G.Node v [] : ts) = (fst' (getNode v) :) <$> unForest ts
-    unForest (t : _) = err $ "Import cycle: " <> showT (toList t)
+    unForest (t : _) = throwError $ "Import cycle: " <> showT (toList t)
 
     fst' (a, _, _) = a
     snd' (_, b, _) = b

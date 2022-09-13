@@ -3,6 +3,7 @@
 module Language.Dynasty.NameResolution(resolveNames) where
 
 import Control.Monad(join)
+import Control.Monad.Except(throwError)
 import Control.Monad.Reader(ReaderT(runReaderT), local, ask)
 import Control.Monad.State(StateT, gets, modify, execStateT)
 import Control.Monad.Trans.Class(lift)
@@ -15,7 +16,7 @@ import Data.Set qualified as S
 import Data.Text(Text)
 
 import Language.Dynasty.Syntax
-import Language.Dynasty.Utils(err, findDup, showT)
+import Language.Dynasty.Utils(findDup, showT)
 
 data Env =
   Env
@@ -29,7 +30,7 @@ type Valid = StateT (Set Id) (Either Text)
 
 addVar :: Id -> Valid ()
 addVar v = gets (S.member v) >>= \case
-  True -> err $ "Duplicate identifier " <> showT v <> " in pattern"
+  True -> throwError $ "Duplicate identifier " <> showT v <> " in pattern"
   False -> modify (S.insert v)
 
 validatePat :: Pat -> Valid ()
@@ -74,13 +75,13 @@ resolveExpr (RecLit fs) = do
 resolveExpr (CtorLit c es) = CtorLit c <$> traverse resolveExpr es
 resolveExpr (Var (Unqual v)) = ask >>= \Env{..} ->
   case vars M.!? v of
-    Nothing -> err $ "Unbound identifier " <> v
+    Nothing -> throwError $ "Unbound identifier " <> v
     Just n -> pure $ Var n
 resolveExpr e@(Var (Qual m v)) = ask >>= \Env{..} ->
   if m `notElem` imports
-  then err $ "Qualified use of un-imported module " <> m
+  then throwError $ "Qualified use of un-imported module " <> m
   else if S.notMember v (exports M.! m)
-  then err $ "Module " <> m <> " does not export the identifier " <> v
+  then throwError $ "Module " <> m <> " does not export the identifier " <> v
   else pure e
 resolveExpr (RecField e f) = (`RecField` f) <$> resolveExpr e
 resolveExpr (CtorField e f) = (`CtorField` f) <$> resolveExpr e
@@ -94,7 +95,7 @@ resolveExpr (Let bs e) =
     withVars (fst <$> bs) $ Let bs <$> resolveExpr e
 resolveExpr (Do _ ss e) = ask >>= \Env{..} ->
   case vars M.!? ">>=" of
-    Nothing -> err "do-expressions require (>>=) to be in scope"
+    Nothing -> throwError "do-expressions require (>>=) to be in scope"
     Just n -> resolveDo n ss e
 resolveExpr e@UnsafeJS{} = pure e
 
@@ -111,7 +112,7 @@ checkImports :: Map Id (Set Id) -> [Id] -> Reso ()
 checkImports exports imports =
   case find (`M.notMember` exports) imports of
     Nothing -> pure ()
-    Just m -> err $ "Import of inexistent module " <> m
+    Just m -> throwError $ "Import of inexistent module " <> m
 
 resolveModule :: Map Id (Set Id) -> Module -> Either Text Module
 resolveModule exports m@Module{..} =

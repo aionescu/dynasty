@@ -6,9 +6,6 @@ import Data.Set qualified as S
 import Data.Text(Text)
 import Data.Text qualified as T
 
-err :: MonadError e m => e -> m a
-err = throwError
-
 showT :: Show a => a -> Text
 showT = T.pack . show
 
@@ -26,5 +23,5 @@ findDup as f = go S.empty as
   where
     go _ [] = pure ()
     go s (a : as)
-      | S.member a s = err $ f a
+      | S.member a s = throwError $ f a
       | otherwise = go (S.insert a s) as

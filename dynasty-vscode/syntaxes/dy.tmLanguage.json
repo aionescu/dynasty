@@ -11,6 +11,22 @@
 		{ "include": "#string" }
 	],
 	"repository": {
+    "comment": {
+      "patterns": [{
+        "name": "comment.line.double-dash.dy",
+        "match": "--.*$"
+      }, {
+        "name": "comment.line.number-sign.dy",
+        "match": "^#!.*$"
+      }, {
+        "name": "comment.block.dy",
+        "begin": "{-",
+        "beginCaptures": { "0": { "name": "punctuation.definition.comment.dy" }},
+        "end": "-}",
+        "endCaptues": { "0": { "name": "punctuation.definition.comment.dy" }},
+        "patterns": [{ "include": "#comment" }]
+      }]
+    },
 		"keyword": {
 			"patterns": [{
 				"name": "keyword.control.dy",
@@ -41,22 +57,6 @@
       "patterns": [{
         "name": "support.function.dy",
         "match": "\\b[A-Z][a-zA-Z0-9']*\\b"
-      }]
-    },
-    "comment": {
-      "patterns": [{
-        "name": "comment.double-dash.dy",
-        "match": "--.*$"
-      }, {
-        "name": "comment.number-sign.dy",
-        "match": "^#.*$"
-      }, {
-        "name": "comment.block.dy",
-        "begin": "{-",
-        "beginCaptures": { "0": { "name": "punctuation.definition.comment.dy" }},
-        "end": "-}",
-        "endCaptues": { "0": { "name": "punctuation.definition.comment.dy" }},
-        "patterns": [{ "include": "#comments" }]
       }]
     },
 		"string": {

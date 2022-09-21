@@ -1,70 +1,49 @@
 module BF
 
-import Core.Bool
-import Core.Function
 import Core.IO
 import Core.IO.NodeAPI
-import Core.List
 import Core.Math
 import Core.Seq
 import Core.String
 
-parse =
-  let go scope stack = \case
-    | [] ->
-      ( case stack of
-        | [] -> reverse scope
-        | _ -> throw "Ummatched \"[\"."
-      )
-    | "+" :: cs -> go (Incr :: scope) stack cs
-    | "-" :: cs -> go (Decr :: scope) stack cs
-    | "<" :: cs -> go (MovL :: scope) stack cs
-    | ">" :: cs -> go (MovR :: scope) stack cs
-    | "," :: cs -> go (Read :: scope) stack cs
-    | "." :: cs -> go (Write :: scope) stack cs
-    | "[" :: cs -> go [] (scope :: stack) cs
-    | "]" :: cs ->
-      ( case stack of
-        | [] -> throw "Unmatched \"]\"."
-        | parent :: stack -> go (Loop (reverse scope) :: parent) stack cs
-      )
-    | _ :: cs -> go scope stack cs
-  in
-  go [] []
+incr { left, crr, right } = (\c -> { left, crr = c, right }) $! (crr + 1) .&. 255 and
+decr { left, crr, right } = (\c -> { left, crr = c, right }) $! (crr - 1) .&. 255 and
+movL { left = h :: t, crr, right } = { left = t, crr = h, right = crr :: right } and
+movR { left, crr, right = h :: t } = { left = crr :: left, crr = h, right = t } and
+read { left, right } = getChar >>= \c -> (\c -> pure { left, crr = c, right }) $! toCharCode c and
+write tape = putChar (fromCharCode tape.crr) *> pure tape and
+loop ops =
+  let go tape =
+    case tape.crr of
+    | 0 -> pure tape
+    | _ -> ops tape >>= go
+  in go
 and
 
 zeros = 0 :: zeros and
-tape = { left = zeros, crr = 0, right = zeros } and
 
-wrap = \case
-  | 256 -> 0
-  | -1 -> 255
-  | n -> n
+parse str =
+  let go state@{ ops, stack } = \case
+    | "+" -> { ops = ops >&> incr, stack }
+    | "-" -> { ops = ops >&> decr, stack }
+    | "<" -> { ops = ops >&> movL, stack }
+    | ">" -> { ops = ops >&> movR, stack }
+    | "," -> { ops = ops >=> read, stack }
+    | "." -> { ops = ops >=> write, stack }
+    | "[" -> { ops = pure, stack = ops :: stack }
+    | "]" ->
+      ( case stack of
+        | [] -> throw "Unmatched \"]\"."
+        | parent :: stack -> {ops = parent >=> loop ops, stack }
+      )
+    | _ -> state
+  in
+    case foldlS' go { ops = pure, stack = [] } str of
+    | { ops, stack = [] } -> ops { left = zeros, crr = 0, right = zeros }
+    | _ -> throw "Ummatched \"[\"."
 and
-
-evalOp op tape@{ left, crr, right } =
-  case op of
-  | Incr -> (\c -> pure { left, crr = c, right }) $! wrap (crr + 1)
-  | Decr -> (\c -> pure { left, crr = c, right }) $! wrap (crr - 1)
-  | MovL -> (case left of h :: t -> pure { left = t, crr = h, right = crr :: right })
-  | MovR -> (case right of h :: t -> pure { left = crr :: left, crr = h, right = t })
-  | Read -> getChar >>= \c -> (\c -> pure { left, crr = c, right }) $! toCharCode c
-  | Write -> do putChar (fromCharCode crr) then pure tape
-  | Loop ops ->
-      case crr of
-      | 0 -> pure tape
-      | _ -> evalOps ops tape >>= evalOp (Loop ops)
-and
-
-evalOps ops tape =
-  case ops of
-  | [] -> pure tape
-  | op :: ops -> evalOp op tape >>= evalOps ops
-and
-
-eval ops = evalOps ops tape and
 
 main =
   getArgs >>= \case
-    | [file] -> readFile file >>= chars; parse; eval
+    | [file] -> readFile file >>= parse
     | _ -> throw "Expecting exactly 1 arg."

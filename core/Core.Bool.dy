@@ -3,4 +3,6 @@ module Core.Bool
 if b t e = unsafejs "e(e(_b).$==='True'?_t:_e)" and
 
 (&&) a b = if a b a and
-(||) a b = if a a b
+(||) a b = if a a b and
+
+not a = if a False True

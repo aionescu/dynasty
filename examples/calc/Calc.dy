@@ -10,12 +10,11 @@ import Core.String
 
 setupBtn id text =
   do   r <- byId "result"
-  then el <- byId id
+  then el <- byId $ "b" + id
   then onClick el $ updateValue r \v -> v + text
 and
 
-setupDigitBtn digit = setupBtn ("b" + show digit) $ show digit and
-setupSymbolBtn name symbol = setupBtn ("b" + name) symbol and
+setupDigitBtn = show; join setupBtn and
 
 setupDelBtn =
   do   r <- byId "result"
@@ -33,11 +32,11 @@ compute =
   then v <- value r
   then tryIO (unsafeEvalJS v) >>= \case
     | Left e -> setMsg e
-    | Right n -> do setValue r n then setMsg ""
+    | Right n -> setValue r n *> setMsg ""
 and
 
 setupComputeBtn =
-  do   el <- byId ("beq")
+  do   el <- byId "beq"
   then onClick el compute
 and
 
@@ -52,6 +51,6 @@ and
 
 main =
   do   setupDigitBtn `forEach` 0 .. 9
-  then uncurry setupSymbolBtn `forEach` symbols
+  then uncurry setupBtn `forEach` symbols
   then setupDelBtn
   then setupComputeBtn

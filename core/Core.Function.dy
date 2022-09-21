@@ -11,4 +11,6 @@ curry f a b = f (a, b) and
 uncurry f (a, b) = f a b and
 
 fix f = let a = f a in a and
-iterate f a = a :: iterate f (f a)
+iterate f a = a :: iterate f (f a) and
+
+join f a = f a a

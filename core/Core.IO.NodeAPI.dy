@@ -1,0 +1,10 @@
+module Core.IO.NodeAPI
+
+fs = unsafejs "require('fs')" and
+
+getArgs = unsafejs "{v:{r:()=>process.argv.slice(2).reduceRight((t,h)=>({$:'::',$0:{v:h},$1:{v:t}}),{$:'Nil'})}}" and
+
+getChar = unsafejs [fs] "{v:{r:()=>{const b=Buffer.alloc(1);_fs.readSync(0,b,0,1);return b.toString('utf8');}}}" and
+putChar c = unsafejs [fs] "({r:()=>{_fs.writeSync(1,Buffer.from(e(_c)),0,1);return{$:'Tuple'};}})" and
+
+readFile f = unsafejs [fs] "({r:()=>_fs.readFileSync(e(_f),'utf8')})"

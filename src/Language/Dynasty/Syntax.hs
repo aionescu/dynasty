@@ -48,7 +48,7 @@ data Expr
   | App Expr Expr
   | Let BindingGroup Expr
   | Do Name [(Maybe Pat, Expr)] Expr
-  | UnsafeJS Bool [Id] Text
+  | UnsafeJS [Id] Text
   deriving stock Show
 
 type BindingGroup = [(Id, Expr)]
@@ -56,16 +56,15 @@ type BindingGroup = [(Id, Expr)]
 data Module =
   Module
   { moduleName :: Id
-  , moduleInitCode :: Text
   , moduleImports :: [Id]
   , moduleBindings :: BindingGroup
+  , moduleExports :: [Id]
   }
   deriving stock Show
 
 data Program =
   Program
   { programMainModule :: Id
-  , programReachable :: [Id]
   , programModules :: [Module]
   }
   deriving stock Show

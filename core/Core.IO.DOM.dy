@@ -1,5 +1,4 @@
-module Core.DOM
-"if(typeof document==='undefined')throw 'Module Core.DOM requires DOM APIs.';"
+module Core.IO.DOM
 
 byId id = unsafejs "({r:()=>document.getElementById(e(_id).toString())})" and
 

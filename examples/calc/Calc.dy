@@ -1,8 +1,8 @@
 module Calc
 
-import Core.DOM
 import Core.Function
 import Core.IO
+import Core.IO.DOM
 import Core.IO.Unsafe
 import Core.List
 import Core.Math

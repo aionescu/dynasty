@@ -11,7 +11,7 @@ import System.Exit(exitFailure)
 import System.FilePath((</>), isExtensionOf)
 
 import Language.Dynasty.Codegen(compile)
-import Language.Dynasty.Desugaring(desugar)
+import Language.Dynasty.Lowering(lower)
 import Language.Dynasty.NameResolution(resolveNames)
 import Language.Dynasty.Opts(Opts(..), getOpts)
 import Language.Dynasty.Parser(parse)
@@ -49,7 +49,7 @@ run Opts{..} = do
     & parse
     >>= validate
     >>= resolveNames
-    <&> desugar
+    <&> lower
     <&> compile runtime
     & either showErr (T.writeFile $ fromMaybe (optsPath </> "main.js") optsOutPath)
 

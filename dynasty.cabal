@@ -26,7 +26,7 @@ executable dynasty
   other-modules:
     Language.Dynasty.Codegen
     Language.Dynasty.Core
-    Language.Dynasty.Desugaring
+    Language.Dynasty.Lowering
     Language.Dynasty.NameResolution
     Language.Dynasty.Opts
     Language.Dynasty.Parser

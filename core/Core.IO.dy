@@ -4,7 +4,7 @@ pure a = unsafejs "({r:()=>e(_a)})" and
 (>>=) m f = unsafejs "({r:()=>e(_f)({v:e(_m).r()}).r()})" and
 
 putStrLn a = unsafejs "({r:()=>{console.log(e(_a));return{$:'Tuple'};}})" and
-print a = unsafejs "({r:()=>{console.log(s(e(_a),false));return{$:'Tuple'};}})" and
+print a = unsafejs "({r:()=>{console.log(s(e(_a)));return{$:'Tuple'};}})" and
 
 throw a = unsafejs "{throw e(_a).toString()}" and
 throwIO a = unsafejs "({r:()=>{throw e(_a).toString()}})" and

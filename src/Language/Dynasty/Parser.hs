@@ -40,7 +40,7 @@ btwn = between `on` symbol
 
 reservedNames :: [Text]
 reservedNames =
-  [ "unsafejs", "unsafejswhnf"
+  [ "unsafejs"
   , "module", "import"
   , "case", "of"
   , "let", "and", "in"
@@ -179,9 +179,10 @@ case' :: Parser Expr
 case' = Case <$> (symbol "case" *> expr <* symbol "of") <*> caseBranches
 
 unsafeJS :: Parser Expr
-unsafeJS = withWhnf <*> (btwn "[" "]" (varId `sepBy` symbol ",") <|> pure []) <*> strLit
-  where
-    withWhnf = UnsafeJS <$> (symbol "unsafejswhnf" $> True <|> symbol "unsafejs" $> False)
+unsafeJS =
+  UnsafeJS
+  <$> (symbol "unsafejs" *> (btwn "[" "]" (varId `sepBy` symbol ",") <|> pure []))
+  <*> strLit
 
 do' :: Parser Expr
 do' = Do (Unqual ">>=") <$> (symbol "do" *> some (try $ stmt <* symbol "then")) <*> expr
@@ -281,9 +282,9 @@ module' :: Parser Module
 module' =
   Module
   <$> (symbol "module" *> modName)
-  <*> (strLit <|> pure "")
   <*> many import'
   <*> bindingGroup
+  <*> pure []
 
 withShebang :: Parser a -> Parser a
 withShebang p = optional shebang *> optional sc *> p <* eof
@@ -292,4 +293,4 @@ parseModule :: FilePath -> Text -> Either Text Module
 parseModule path = first (T.pack . errorBundlePretty) . runParser (withShebang module') path
 
 parse :: [(FilePath, Text)] -> Either Text Program
-parse ms = Program "" [] <$> traverse (uncurry parseModule) ms
+parse ms = Program "" <$> traverse (uncurry parseModule) ms

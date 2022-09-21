@@ -30,7 +30,7 @@
 		"keyword": {
 			"patterns": [{
 				"name": "keyword.control.dy",
-				"match": "\\b(unsafejs|unsafejswhnf|module|import|case|of|let|and|in|do|then)\\b"
+				"match": "\\b(unsafejs|module|import|case|of|let|and|in|do|then)\\b"
 			}]
     },
     "infixOp": {

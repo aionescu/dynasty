@@ -3,14 +3,16 @@
 module Language.Dynasty.NameResolution(resolveNames) where
 
 import Control.Monad(join)
-import Control.Monad.Except(throwError)
-import Control.Monad.Reader(ReaderT(runReaderT), local, ask)
+import Control.Monad.Except(throwError, liftEither, withError)
+import Control.Monad.Reader(ReaderT(runReaderT), local, ask, asks)
 import Control.Monad.State(StateT, gets, modify, execStateT)
-import Control.Monad.Trans.Class(lift)
-import Data.Bifunctor(first)
+import Control.Monad.Trans.Writer.CPS(WriterT, tell, runWriterT)
 import Data.Foldable(foldMap', traverse_, find)
+import Data.Function((&))
+import Data.Functor((<&>), ($>))
 import Data.Map.Strict(Map)
 import Data.Map.Strict qualified as M
+import Data.Maybe(mapMaybe)
 import Data.Set(Set)
 import Data.Set qualified as S
 import Data.Text(Text)
@@ -20,12 +22,26 @@ import Language.Dynasty.Utils(findDup, showT)
 
 data Env =
   Env
-  { vars :: Map Id Name
-  , imports :: [Id]
-  , exports :: Map Id (Set Id)
+  { envVars :: Map Id Name
+  , envImports :: [Id]
+  , envExports :: Map Id (Set Id)
   }
 
-type Reso = ReaderT Env (Either Text)
+newtype Exports = E (Map Id (Set Id))
+  deriving stock Show
+
+instance Semigroup Exports where
+  E a <> E b = E $ M.unionWith (<>) a b
+
+instance Monoid Exports where
+  mempty = E mempty
+
+type Reso = WriterT Exports (ReaderT Env (Either Text))
+
+tellExport :: Name -> Reso ()
+tellExport Unqual{} = pure ()
+tellExport (Qual m i) = tell $ E $ M.singleton m $ S.singleton i
+
 type Valid = StateT (Set Id) (Either Text)
 
 addVar :: Id -> Valid ()
@@ -47,7 +63,7 @@ validatePat Wildcard = pure ()
 validatePat (As v p) = validatePat p *> addVar v
 
 patVars :: Pat -> Reso [Id]
-patVars pat = lift $ S.toList <$> execStateT (validatePat pat) S.empty
+patVars pat = liftEither $ S.toList <$> execStateT (validatePat pat) S.empty
 
 withPatVars :: Pat -> Reso a -> Reso a
 withPatVars p m = do
@@ -74,15 +90,13 @@ resolveExpr (RecLit fs) = do
   RecLit <$> traverse (traverse (traverse resolveExpr)) fs
 resolveExpr (CtorLit c es) = CtorLit c <$> traverse resolveExpr es
 resolveExpr (Var (Unqual v)) = ask >>= \Env{..} ->
-  case vars M.!? v of
+  case envVars M.!? v of
     Nothing -> throwError $ "Unbound identifier " <> v
-    Just n -> pure $ Var n
-resolveExpr e@(Var (Qual m v)) = ask >>= \Env{..} ->
-  if m `notElem` imports
-  then throwError $ "Qualified use of un-imported module " <> m
-  else if S.notMember v (exports M.! m)
-  then throwError $ "Module " <> m <> " does not export the identifier " <> v
-  else pure e
+    Just n -> tellExport n $> Var n
+resolveExpr e@(Var n@(Qual m v)) = ask >>= \Env{..} -> if
+  | m `notElem` envImports -> throwError $ "Qualified use of un-imported module " <> m
+  | S.notMember v (envExports M.! m) -> throwError $ "Module " <> m <> " does not export the identifier " <> v
+  | otherwise -> tellExport n $> e
 resolveExpr (RecField e f) = (`RecField` f) <$> resolveExpr e
 resolveExpr (CtorField e f) = (`CtorField` f) <$> resolveExpr e
 resolveExpr (Case e bs) = Case <$> resolveExpr e <*> traverse resolveBranch bs
@@ -94,13 +108,13 @@ resolveExpr (Let bs e) =
   resolveBindingGroup bs >>= \bs ->
     withVars (fst <$> bs) $ Let bs <$> resolveExpr e
 resolveExpr (Do _ ss e) = ask >>= \Env{..} ->
-  case vars M.!? ">>=" of
+  case envVars M.!? ">>=" of
     Nothing -> throwError "do-expressions require (>>=) to be in scope"
-    Just n -> resolveDo n ss e
+    Just n -> tellExport n *> resolveDo n ss e
 resolveExpr e@UnsafeJS{} = pure e
 
 withVars :: [Id] -> Reso a -> Reso a
-withVars vs = local (\e@Env{..} -> e{vars = M.fromList ((\i -> (i, Unqual i)) <$> vs) <> vars})
+withVars vs = local (\e@Env{..} -> e{envVars = M.fromList ((\i -> (i, Unqual i)) <$> vs) <> envVars})
 
 resolveBindingGroup :: BindingGroup -> Reso BindingGroup
 resolveBindingGroup bs = do
@@ -108,28 +122,35 @@ resolveBindingGroup bs = do
   findDup vars \i -> "Duplicate definition of " <> i <> " in the same binding group"
   withVars vars $ traverse (traverse resolveExpr) bs
 
-checkImports :: Map Id (Set Id) -> [Id] -> Reso ()
-checkImports exports imports =
-  case find (`M.notMember` exports) imports of
+checkImports :: [Id] -> Reso ()
+checkImports imports = ask >>= \Env{..} ->
+  case find (`M.notMember` envExports) imports of
     Nothing -> pure ()
     Just m -> throwError $ "Import of inexistent module " <> m
 
-resolveModule :: Map Id (Set Id) -> Module -> Either Text Module
-resolveModule exports m@Module{..} =
-  first (("In module " <> moduleName <> ": ") <>)
-  $ (\bg -> m{moduleBindings = bg})
-  <$> runReaderT
-    (checkImports exports moduleImports *> resolveBindingGroup moduleBindings)
-    (Env (foldMap' exported moduleImports) moduleImports exports)
-  where
-    exported m = M.fromSet (Qual m) $ exports M.! m
+resolveModule :: Module -> Reso Module
+resolveModule Module{..} = do
+  exports <- asks envExports
+  let toQual m = M.fromSet (Qual m) $ exports M.! m
+
+  local (\e -> e{envVars = foldMap' toQual moduleImports, envImports = moduleImports}) do
+    withError (("In module " <> moduleName <> ": ") <>) do
+      checkImports moduleImports
+      moduleBindings <- resolveBindingGroup moduleBindings
+      pure Module{..}
 
 resolveNames :: Program -> Either Text Program
 resolveNames p@Program{..} =
-  (\ms -> p{programModules = ms})
-  <$> traverse (resolveModule exports) programModules
+  tellExport (Qual programMainModule "main")
+  *> traverse resolveModule programModules
+  & runWriterT
+  & flip runReaderT (Env M.empty [] exports)
+  <&> \(ms, used) -> p{programModules = mapMaybe (keepUsed used) ms}
   where
+    keepUsed (E used) m@Module{..} =
+      used M.!? moduleName <&> \used -> m{moduleExports = S.toList used}
+
     exports =
       M.fromList
       $ (\Module{..} -> (moduleName, S.fromList $ fst <$> moduleBindings))
-        <$> programModules
+      <$> programModules

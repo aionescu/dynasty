@@ -25,17 +25,14 @@ data Expr
   | Case [Branch]
   | Lam Id Expr
   | App Expr Expr
-  | Let BindingGroup Expr
-  | UnsafeJS Bool [Id] Text
+  | Let Id Expr Expr
+  | LetRec [(Id, Expr)] Expr
+  | UnsafeJS [Id] Text
   deriving stock Show
 
-type BindingGroup = [(Bool, [(Id, Expr)])]
-
-data Module
-  = Module
+data Module =
+  Module
   { moduleName :: Id
-  , moduleInitCode :: Text
-  , moduleBindings :: BindingGroup
-  , moduleExports :: [Id]
+  , moduleBody :: Expr
   }
   deriving stock Show

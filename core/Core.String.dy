@@ -1,6 +1,6 @@
 module Core.String
 
-show a = unsafejs "s(e(_a),false)" and
+show a = unsafejs "s(e(_a))" and
 
 length a = unsafejs "e(_a).length" and
 (!) a i = unsafejs "e(_a)[e(_i)]" and

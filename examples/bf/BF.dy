@@ -3,7 +3,7 @@ module BF
 import Core.Bool
 import Core.Function
 import Core.IO
-import Core.IO.Node
+import Core.IO.NodeAPI
 import Core.List
 import Core.Math
 import Core.Seq

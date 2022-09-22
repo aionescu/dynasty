@@ -179,6 +179,7 @@ thunkAssign e
 
 parenthesizeLam :: Expr -> JS
 parenthesizeLam e@Lam{} = "(" <> compileExpr e <> ")"
+parenthesizeLam e@Case{} = "(" <> compileExpr e <> ")"
 parenthesizeLam e = compileExpr e
 
 parenthesize :: Expr -> JS

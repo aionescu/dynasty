@@ -16,14 +16,17 @@ main =
   then () <- updateRef r ((+) 1)
   then 4  <- readRef r
 
+  then 4 <- swapRef r 5
+  then 5 <- readRef r
+
   then Left "Bb" <- tryIO (mkRef (throw "Bb"))
 
-  then ()        <- writeRef r 5
-  then Left "Aa" <- tryIO (writeRef r (throw "Aa"))
-  then 5         <- readRef r
-
   then ()        <- writeRef r 6
-  then Left "Cc" <- tryIO (updateRef r (\_ -> throw "Cc"))
+  then Left "Aa" <- tryIO (writeRef r (throw "Aa"))
   then 6         <- readRef r
+
+  then ()        <- writeRef r 7
+  then Left "Cc" <- tryIO (updateRef r (\_ -> throw "Cc"))
+  then 7         <- readRef r
 
   then putStrLn "All tests passed"

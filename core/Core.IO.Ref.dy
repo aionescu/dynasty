@@ -2,8 +2,8 @@ module Core.IO.Ref
 
 import Core.IO
 
-mkRef a = unsafejs "({r:()=>({c:_a})})" and
-readRef r = unsafejs "({r:()=>e(e(_r).c)})" and
-writeRef r a = unsafejs "({r:()=>{e(_r).c=_a;return{$:'Tuple'}}})" and
-updateRef r f = unsafejs "({r:()=>{const r=e(_r),c=r.c;r.c={f:()=>e(_f)(c)};return{$:'Tuple'}}})" and
-updateRef' r f = unsafejs "({r:()=>{const r=e(_r);r.c={v:e(_f)(r.c)};return{$:'Tuple'}}})"
+mkRef a = unsafejs "({r:()=>({c:e(_a)})})" and
+readRef r = unsafejs "({r:()=>e(_r).c})" and
+writeRef r a = unsafejs "({r:()=>{e(_r).c=e(_a);return{$:'Tuple'}}})" and
+swapRef r a = unsafejs "({r:()=>{const r=e(_r),c=r.c;r.c=e(_a);return c}})" and
+updateRef r f = unsafejs "({r:()=>{const r=e(_r);r.c=e(_f)({v:r.c});return{$:'Tuple'}}})"

@@ -1,0 +1,3 @@
+module Core.Debug
+
+trace a = unsafejs "{const a=e(_a);console.log(s(a));return a}"

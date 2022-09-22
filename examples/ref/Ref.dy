@@ -7,24 +7,23 @@ import Core.Math
 import Core.Seq
 
 main =
-  do   r <- mkRef 2
-  then 2 <- readRef r
+  do   r  <- mkRef 2
+  then 2  <- readRef r
+
   then () <- writeRef r 3
-  then 3 <- readRef r
+  then 3  <- readRef r
+
   then () <- updateRef r ((+) 1)
-  then 4 <- readRef r
+  then 4  <- readRef r
 
-  then Right ()  <- tryIO (writeRef r $  throw "Aa")
-  then () <- writeRef r 5
-  then Left "Aa" <- tryIO (writeRef r $! throw "Aa")
-  then 5 <- readRef r
+  then Left "Bb" <- tryIO (mkRef (throw "Bb"))
 
-  then Right q   <- tryIO (mkRef $  throw "Bb")
-  then Left "Bb" <- tryIO (mkRef $! throw "Bb")
+  then ()        <- writeRef r 5
+  then Left "Aa" <- tryIO (writeRef r (throw "Aa"))
+  then 5         <- readRef r
 
-  then Right ()  <- tryIO (updateRef  q $ \_ -> throw "Cc")
-  then () <- writeRef q 6
-  then Left "Cc" <- tryIO (updateRef' q $ \_ -> throw "Cc")
-  then 6 <- readRef q
+  then ()        <- writeRef r 6
+  then Left "Cc" <- tryIO (updateRef r (\_ -> throw "Cc"))
+  then 6         <- readRef r
 
   then putStrLn "All tests passed"

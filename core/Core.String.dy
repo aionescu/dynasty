@@ -12,4 +12,4 @@ chars s = unsafejs "{let s=e(_s),l={$:'Nil'},i=s.length;while(i--)l={$:'::',$0:{
 
 pop s = unsafejs "e(_s).slice(0,e(_s).length-1)" and
 
-foldlS' f z s = unsafejs "{let z=e(_z);const f=e(_f),s=e(_s),l=s.length;for(let i=0;i<l;++i)z=f({v:z})({v:s[i]});return z;}"
+unsafeFoldChars f z s = unsafejs "{const z={v:e(_z)},f=e(_f),s=e(_s),l=s.length,c={v:''};for(let i=0;i<l;++i){c.v=s[i];z.v=f(z)(c)}return z.v;}"

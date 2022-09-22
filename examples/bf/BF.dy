@@ -1,49 +1,49 @@
 module BF
 
+import Core.Function
 import Core.IO
 import Core.IO.NodeAPI
 import Core.Math
 import Core.Seq
 import Core.String
 
-incr { left, crr, right } = (\c -> { left, crr = c, right }) $! (crr + 1) .&. 255 and
-decr { left, crr, right } = (\c -> { left, crr = c, right }) $! (crr - 1) .&. 255 and
-movL { left = h :: t, crr, right } = { left = t, crr = h, right = crr :: right } and
-movR { left, crr, right = h :: t } = { left = crr :: left, crr = h, right = t } and
-read { left, right } = getChar >>= \c -> (\c -> pure { left, crr = c, right }) $! toCharCode c and
-write tape = putChar (fromCharCode tape.crr) *> pure tape and
-loop ops =
-  let go tape =
-    case tape.crr of
-    | 0 -> pure tape
-    | _ -> ops tape >>= go
+incr k c = k $! (c + 1) .&. 255 and
+decr k c = k $! (c - 1) .&. 255 and
+movL k c (h :: t) r = k h t (c :: r) and
+movR k c l (h :: t) = k h (c :: l) t and
+read k _ l r = getChar >>= \c -> (k $! toCharCode c) l r and
+write k c l r = putChar (fromCharCode c) *> k c l r and
+loop op k =
+  let go = \case
+    | 0 -> k 0
+    | c -> op go c
   in go
+and
+
+parse str =
+  let go state@{ op, stack } = \case
+    | "+" -> { op = op . incr, stack }
+    | "-" -> { op = op . decr, stack }
+    | "<" -> { op = op . movL, stack }
+    | ">" -> { op = op . movR, stack }
+    | "," -> { op = op . read, stack }
+    | "." -> { op = op . write, stack }
+    | "[" -> { op = id, stack = op :: stack }
+    | "]" ->
+      ( case stack of
+        | [] -> throw "Unmatched \"]\"."
+        | parent :: stack -> {op = parent . loop op, stack }
+      )
+    | _ -> state
+  in
+    case unsafeFoldChars go { op = id, stack = [] } str of
+    | { op, stack = [] } -> op
+    | _ -> throw "Ummatched \"[\"."
 and
 
 zeros = 0 :: zeros and
 
-parse str =
-  let go state@{ ops, stack } = \case
-    | "+" -> { ops = ops >&> incr, stack }
-    | "-" -> { ops = ops >&> decr, stack }
-    | "<" -> { ops = ops >&> movL, stack }
-    | ">" -> { ops = ops >&> movR, stack }
-    | "," -> { ops = ops >=> read, stack }
-    | "." -> { ops = ops >=> write, stack }
-    | "[" -> { ops = pure, stack = ops :: stack }
-    | "]" ->
-      ( case stack of
-        | [] -> throw "Unmatched \"]\"."
-        | parent :: stack -> {ops = parent >=> loop ops, stack }
-      )
-    | _ -> state
-  in
-    case foldlS' go { ops = pure, stack = [] } str of
-    | { ops, stack = [] } -> ops { left = zeros, crr = 0, right = zeros }
-    | _ -> throw "Ummatched \"[\"."
-and
-
 main =
-  getArgs >>= \case
-    | [file] -> readFile file >>= parse
-    | _ -> throw "Expecting exactly 1 arg."
+  do   [file] <- getArgs
+  then code <- readFile file
+  then parse code (\_ _ _ -> pure ()) 0 zeros zeros

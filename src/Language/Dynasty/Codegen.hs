@@ -189,7 +189,7 @@ parenthesize (compileExpr -> js)
   | otherwise = js
 
 compileModule :: Module -> JS
-compileModule Module{..} = modName moduleName <> "=" <> compileExpr moduleBody
+compileModule m = modName m.name <> "=" <> compileExpr m.body
 
 compile :: JS -> ([Module], Id) -> JS
 compile prelude (ms, main) =

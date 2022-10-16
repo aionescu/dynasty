@@ -129,28 +129,28 @@ checkImports imports = ask >>= \Env{..} ->
     Just m -> throwError $ "Import of inexistent module " <> m
 
 resolveModule :: Module -> Reso Module
-resolveModule Module{..} = do
-  exports <- asks envExports
+resolveModule m = do
+  exports <- asks (.envExports)
   let toQual m = M.fromSet (Qual m) $ exports M.! m
 
-  local (\e -> e{envVars = foldMap' toQual moduleImports, envImports = moduleImports}) do
-    withError (("In module " <> moduleName <> ": ") <>) do
-      checkImports moduleImports
-      moduleBindings <- resolveBindingGroup moduleBindings
-      pure Module{..}
+  local (\e -> e{envVars = foldMap' toQual m.imports, envImports = m.imports}) do
+    withError (("In module " <> m.name <> ": ") <>) do
+      checkImports m.imports
+      bindings <- resolveBindingGroup m.bindings
+      pure m{bindings}
 
 resolveNames :: Program -> Either Text Program
-resolveNames p@Program{..} =
-  tellExport (Qual programMainModule "main")
-  *> traverse resolveModule programModules
+resolveNames p =
+  tellExport (Qual p.main "main")
+  *> traverse resolveModule p.modules
   & runWriterT
   & flip runReaderT (Env M.empty [] exports)
-  <&> \(ms, used) -> p{programModules = mapMaybe (keepUsed used) ms}
+  <&> \(ms, used) -> p{modules = mapMaybe (keepUsed used) ms}
   where
-    keepUsed (E used) m@Module{..} =
-      used M.!? moduleName <&> \used -> m{moduleExports = S.toList used}
+    keepUsed (E used) m =
+      used M.!? m.name <&> \used -> m{exports = S.toList used}
 
     exports =
       M.fromList
-      $ (\Module{..} -> (moduleName, S.fromList $ fst <$> moduleBindings))
-      <$> programModules
+      $ (\m -> (m.name, S.fromList $ fst <$> m.bindings))
+      <$> p.modules

@@ -130,15 +130,12 @@ lowerExpr (Do n stmts e) = lowerExpr $ foldr bind' e stmts
     bind' (p, a) e' = (Var n `App` a) `App` Lam [fromMaybe Wildcard p] e'
 
 lowerModule :: Module -> C.Module
-lowerModule Module{..} =
-  C.Module
-  { moduleBody =
-      lowerExpr (Let moduleBindings $ RecLit $ (, Nothing) <$> moduleExports) `runReader` 0
-  , ..
-  }
+lowerModule m =
+  C.Module m.name
+  $ lowerExpr (Let m.bindings $ RecLit $ (, Nothing) <$> m.exports) `runReader` 0
 
 lower :: Program -> ([C.Module], Id)
-lower Program{..} =
-  ( lowerModule <$> programModules
-  , programMainModule
+lower p =
+  ( lowerModule <$> p.modules
+  , p.main
   )

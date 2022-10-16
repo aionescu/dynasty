@@ -32,7 +32,7 @@ data Expr
 
 data Module =
   Module
-  { moduleName :: Id
-  , moduleBody :: Expr
+  { name :: Id
+  , body :: Expr
   }
   deriving stock Show

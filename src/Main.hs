@@ -3,7 +3,6 @@ module Main(main) where
 import Control.Monad(join)
 import Data.Function((&))
 import Data.Functor((<&>))
-import Data.Maybe(fromMaybe)
 import Data.Text(Text)
 import Data.Text.IO qualified as T
 import System.Directory(listDirectory, doesDirectoryExist, doesFileExist)
@@ -38,21 +37,20 @@ parseDir label path =
         _ -> showErr $ "Error: " <> label <> " " <> showT path <> " does not exist."
 
 run :: Opts -> IO ()
-run Opts{..} = do
+run opts = do
   coreDir <- (</> "core") <$> getDataDir
   runtime <- T.readFile $ coreDir </> "runtime.js"
   coreFiles <- parseDir "Core dir" coreDir
-  userFiles <- parseDir "Project dir" optsPath
-  let outPath = fromMaybe (optsPath </> "main.js") optsOutPath
+  projFiles <- parseDir "Project dir" opts.projPath
 
-  modules <- traverse (join $ curry $ traverse T.readFile) $ coreFiles <> userFiles
+  modules <- traverse (join $ curry $ traverse T.readFile) $ coreFiles <> projFiles
   modules
     & parse
     >>= validate
     >>= resolveNames
     <&> lower
     <&> compile runtime
-    & either showErr (T.writeFile outPath)
+    & either showErr (T.writeFile opts.outPath)
 
 main :: IO ()
 main = getOpts >>= run

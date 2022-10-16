@@ -55,16 +55,16 @@ type BindingGroup = [(Id, Expr)]
 
 data Module =
   Module
-  { moduleName :: Id
-  , moduleImports :: [Id]
-  , moduleBindings :: BindingGroup
-  , moduleExports :: [Id]
+  { name :: Id
+  , imports :: [Id]
+  , bindings :: BindingGroup
+  , exports :: [Id]
   }
   deriving stock Show
 
 data Program =
   Program
-  { programMainModule :: Id
-  , programModules :: [Module]
+  { main :: Id
+  , modules :: [Module]
   }
   deriving stock Show

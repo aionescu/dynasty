@@ -17,19 +17,19 @@ import Language.Dynasty.Utils(findDup)
 type Valid = Either Text
 
 modulesUnique :: Program -> Valid Program
-modulesUnique p@Program{..} =
-  p <$ findDup (moduleName <$> programModules) ("Duplicate definition of module " <>)
+modulesUnique p =
+  p <$ findDup ((.name) <$> p.modules) ("Duplicate definition of module " <>)
 
 findMainModule :: Program -> Valid Program
-findMainModule p@Program{..} =
-  case filter (elem "main" . fmap fst . moduleBindings) programModules of
+findMainModule p =
+  case filter (elem "main" . fmap fst . (.bindings)) p.modules of
     [] -> throwError "No main module found"
-    [Module{..}] -> pure p{programMainModule = moduleName}
-    ms -> throwError $ "Multiple suitable main modules found: " <> T.intercalate ", " (moduleName <$> ms)
+    [m] -> pure p{main = m.name}
+    ms -> throwError $ "Multiple suitable main modules found: " <> T.intercalate ", " ((.name) <$> ms)
 
 topSortModules :: Program -> Valid Program
-topSortModules p@Program{..} =
-  unForest (G.scc g) <&> \ms -> p{programModules = ms}
+topSortModules p =
+  unForest (G.scc g) <&> \ms -> p{modules = ms}
   where
     unForest [] = pure []
     unForest (G.Node v [] : ts)
@@ -41,9 +41,9 @@ topSortModules p@Program{..} =
       throwError $ "Import cycle: " <> T.intercalate " -> " (getName . getNode <$> toList t)
 
     getName (_, n, _) = n
-    (g, getNode, getVertex) = G.graphFromEdges $ edge <$> programModules
-    edge m@Module{..} = (m, moduleName, nubOrd moduleImports)
-    reachable = S.fromList $ getName . getNode <$> G.reachable g (fromJust $ getVertex programMainModule)
+    (g, getNode, getVertex) = G.graphFromEdges $ edge <$> p.modules
+    edge m = (m, m.name, nubOrd m.imports)
+    reachable = S.fromList $ getName . getNode <$> G.reachable g (fromJust $ getVertex p.main)
 
 validate :: Program -> Valid Program
 validate = modulesUnique >=> findMainModule >=> topSortModules

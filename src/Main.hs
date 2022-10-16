@@ -43,15 +43,16 @@ run Opts{..} = do
   runtime <- T.readFile $ coreDir </> "runtime.js"
   coreFiles <- parseDir "Core dir" coreDir
   userFiles <- parseDir "Project dir" optsPath
-  modules <- traverse (join $ curry $ traverse T.readFile) $ coreFiles <> userFiles
+  let outPath = fromMaybe (optsPath </> "main.js") optsOutPath
 
+  modules <- traverse (join $ curry $ traverse T.readFile) $ coreFiles <> userFiles
   modules
     & parse
     >>= validate
     >>= resolveNames
     <&> lower
     <&> compile runtime
-    & either showErr (T.writeFile $ fromMaybe (optsPath </> "main.js") optsOutPath)
+    & either showErr (T.writeFile outPath)
 
 main :: IO ()
 main = getOpts >>= run

@@ -36,7 +36,7 @@ executable dynasty
     Paths_dynasty
 
   build-depends:
-    base >=4.15 && <5
+    base >=4.16 && <5
     , containers ^>= 0.6.4
     , directory ^>= 1.3.7
     , filepath ^>= 1.4.2
@@ -55,8 +55,6 @@ executable dynasty
     -Wall
     -Wcompat
     -Widentities
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
     -Wmissing-deriving-strategies
     -Wno-name-shadowing
     -Wno-unticked-promoted-constructors
@@ -65,56 +63,9 @@ executable dynasty
     -Wredundant-constraints
     -Wunused-packages
 
-  default-language: Haskell2010
+  default-language: GHC2021
 
   default-extensions:
-    -- GHC2021
-    BangPatterns
-    BinaryLiterals
-    ConstrainedClassMethods
-    ConstraintKinds
-    DeriveDataTypeable
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveLift
-    DeriveTraversable
-    DoAndIfThenElse
-    EmptyCase
-    EmptyDataDecls
-    EmptyDataDeriving
-    ExistentialQuantification
-    ExplicitForAll
-    FlexibleContexts
-    FlexibleInstances
-    ForeignFunctionInterface
-    GADTSyntax
-    GeneralisedNewtypeDeriving
-    HexFloatLiterals
-    ImplicitPrelude
-    ImportQualifiedPost
-    InstanceSigs
-    KindSignatures
-    MonomorphismRestriction
-    MultiParamTypeClasses
-    NamedFieldPuns
-    NamedWildCards
-    NumericUnderscores
-    PatternGuards
-    PolyKinds
-    PostfixOperators
-    RankNTypes
-    RelaxedPolyRec
-    ScopedTypeVariables
-    StandaloneDeriving
-    StandaloneKindSignatures
-    StarIsType
-    TraditionalRecordSyntax
-    TupleSections
-    TypeApplications
-    TypeOperators
-    TypeSynonymInstances
-
     ApplicativeDo
     BlockArguments
     DataKinds
@@ -127,11 +78,15 @@ executable dynasty
     GADTs
     GeneralizedNewtypeDeriving
     LambdaCase
+    LexicalNegation
     MagicHash
     MultiWayIf
     NegativeLiterals
+    NoFieldSelectors
     NoMonomorphismRestriction
     NoStarIsType
+    OverloadedLabels
+    OverloadedRecordDot
     OverloadedStrings
     PartialTypeSignatures
     PatternSynonyms
@@ -140,6 +95,7 @@ executable dynasty
     RecursiveDo
     TypeFamilies
     TypeFamilyDependencies
+    UnboxedSums
     UnboxedTuples
     UndecidableInstances
     ViewPatterns

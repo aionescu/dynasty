@@ -1,3 +1,5 @@
+<!-- markdownlint-disable first-line-heading -->
+
 <div align="center">
   <h1>dynasty</h1>
 

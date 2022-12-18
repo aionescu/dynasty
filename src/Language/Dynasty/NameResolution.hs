@@ -10,6 +10,8 @@ import Control.Monad.Trans.Writer.CPS(WriterT, tell, runWriterT)
 import Data.Foldable(foldMap', traverse_, find)
 import Data.Function((&))
 import Data.Functor((<&>), ($>))
+import Data.Map.Monoidal.Strict(MonoidalMap)
+import Data.Map.Monoidal.Strict qualified as MM
 import Data.Map.Strict(Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe(mapMaybe)
@@ -27,20 +29,13 @@ data Env =
   , envExports :: Map Id (Set Id)
   }
 
-newtype Exports = E (Map Id (Set Id))
-  deriving stock Show
-
-instance Semigroup Exports where
-  E a <> E b = E $ M.unionWith (<>) a b
-
-instance Monoid Exports where
-  mempty = E mempty
+type Exports = MonoidalMap Id (Set Id)
 
 type Reso = WriterT Exports (ReaderT Env (Either Text))
 
 tellExport :: Name -> Reso ()
 tellExport Unqual{} = pure ()
-tellExport (Qual m i) = tell $ E $ M.singleton m $ S.singleton i
+tellExport (Qual m i) = tell $ MM.singleton m $ S.singleton i
 
 type Valid = StateT (Set Id) (Either Text)
 
@@ -147,8 +142,8 @@ resolveNames p =
   & flip runReaderT (Env M.empty [] exports)
   <&> \(ms, used) -> p{modules = mapMaybe (keepUsed used) ms}
   where
-    keepUsed (E used) m =
-      used M.!? m.name <&> \used -> m{exports = S.toList used}
+    keepUsed used m =
+      used MM.!? m.name <&> \used -> m{exports = S.toList used}
 
     exports =
       M.fromList

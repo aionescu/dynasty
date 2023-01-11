@@ -14,28 +14,28 @@ movL k c (h :: t) r = k h t (c :: r) and
 movR k c l (h :: t) = k h (c :: l) t and
 read k _ l r = getChar >>= \c -> (k $! toCharCode c) l r and
 write k c l r = putChar (fromCharCode c) *> k c l r and
-loop op k =
+loop o k =
   let go = \case
     | 0 -> k 0
-    | c -> op go c
+    | c -> o go c
   in go
 and
 
 parse s =
   let len = length s
-  and go l o i =
-    if (i == len) (if l (throw "Unmatched [") {o,i})
+  and go l o i k =
+    if (i == len) (if l (throw "Unmatched [") $ k o i)
       case s ! i of
-      | "+" -> go l (o . incr) (i + 1)
-      | "-" -> go l (o . decr) (i + 1)
-      | "<" -> go l (o . movL) (i + 1)
-      | ">" -> go l (o . movR) (i + 1)
-      | "," -> go l (o . read) (i + 1)
-      | "." -> go l (o . write) (i + 1)
-      | "[" -> (case go True id (i + 1) of {o = o', i} -> go l (o . loop o') i)
-      | "]" -> (if l {o, i = i + 1} $ throw "Unmatched ]")
-      | _ -> go l o (i + 1)
-  in (go False id 0).o
+      | "+" -> go l (o . incr) (i + 1) k
+      | "-" -> go l (o . decr) (i + 1) k
+      | "<" -> go l (o . movL) (i + 1) k
+      | ">" -> go l (o . movR) (i + 1) k
+      | "," -> go l (o . read) (i + 1) k
+      | "." -> go l (o . write) (i + 1) k
+      | "[" -> go True id (i + 1) \o' i -> go l (o . loop o') i k
+      | "]" -> if l (k o $ i + 1) $ throw "Unmatched ]"
+      | _ -> go l o (i + 1) k
+  in go False id 0 \o _ -> o
 and
 
 zeros = 0 :: zeros and

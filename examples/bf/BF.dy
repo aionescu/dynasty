@@ -20,25 +20,23 @@ loop op k =
   in go
 and
 
-parse str =
-  let go state@{ op, stack } = \case
-    | "+" -> { op = op . incr, stack }
-    | "-" -> { op = op . decr, stack }
-    | "<" -> { op = op . movL, stack }
-    | ">" -> { op = op . movR, stack }
-    | "," -> { op = op . read, stack }
-    | "." -> { op = op . write, stack }
-    | "[" -> { op = id, stack = op :: stack }
-    | "]" ->
-      ( case stack of
-        | [] -> throw "Unmatched \"]\"."
-        | parent :: stack -> {op = parent . loop op, stack }
-      )
-    | _ -> state
-  in
-    case unsafeFoldChars go { op = id, stack = [] } str of
-    | { op, stack = [] } -> op
-    | _ -> throw "Ummatched \"[\"."
+parse s =
+  let len = length s
+  and go l o i =
+    case i == len of
+    | True -> ( case l of | True -> throw "Unmatched [" | _ -> {o,i} )
+    | _ ->
+        case s ! i of
+        | "+" -> go l (o . incr) (i + 1)
+        | "-" -> go l (o . decr) (i + 1)
+        | "<" -> go l (o . movL) (i + 1)
+        | ">" -> go l (o . movR) (i + 1)
+        | "," -> go l (o . read) (i + 1)
+        | "." -> go l (o . write) (i + 1)
+        | "[" -> ( case go True id (i + 1) of | {o = o', i} -> go l (o . loop o') i )
+        | "]" -> ( case l of | True -> {o, i = i + 1} | _ -> throw "Unmatched ]" )
+        | _ -> go l o (i + 1)
+  in (go False id 0).o
 and
 
 zeros = 0 :: zeros and

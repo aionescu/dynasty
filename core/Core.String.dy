@@ -10,4 +10,4 @@ toCharCode a = unsafejs "e(_a).charCodeAt(0)" and
 
 chars s = unsafejs "{let s=e(_s),l={$:'Nil'},i=s.length;while(i--)l={$:'::',$0:{v:s[i]},$1:{v:l}};return l}" and
 
-pop s = unsafejs "e(_s).slice(0,e(_s).length-1)" and
+pop s = unsafejs "e(_s).slice(0,e(_s).length-1)"

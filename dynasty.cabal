@@ -13,13 +13,19 @@ copyright: Copyright (C) 2020-2023 Alex Ionescu
 category: Compilers/Interpreters, Language
 build-type: Simple
 
+extra-doc-files:
+  CHANGELOG.md
+
 extra-source-files:
   README.md
-  CHANGELOG.md
 
 data-files:
   core/runtime.js
   core/**/*.dy
+
+source-repository head
+  type: git
+  location: https://github.com/aionescu/dynasty
 
 common ghc-flags
   default-language: GHC2021

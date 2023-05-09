@@ -20,8 +20,8 @@ The standard library and runtime code can be found in the [core](core) folder.
 
 ### Prerequisites
 
-* GHC (>= 9.4)
-* cabal (>= 3.8)
+* GHC (>= 9.2)
+* cabal (>= 3.6)
 
 (Can be installed via [ghcup](https://www.haskell.org/ghcup/))
 

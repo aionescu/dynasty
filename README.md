@@ -20,10 +20,10 @@ The standard library and runtime code can be found in the [core](core) folder.
 
 ### Prerequisites
 
-* GHC (>= 9.2)
-* cabal (>= 3.6)
+* GHC (>= 9.6)
+* cabal (>= 3.8)
 
-(Can be installed via [ghcup](https://www.haskell.org/ghcup/))
+(Both can be installed via [ghcup](https://www.haskell.org/ghcup/))
 
 To compile Dynasty programs, use the following command:
 

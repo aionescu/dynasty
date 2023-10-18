@@ -33,11 +33,11 @@ cabal run . -- <target-dir>
 
 The first invocation may take a while, since it will also build the compiler's dependencies.
 
-By default, the compiler outputs a file named `main.js`. You can include it in a `<script>` tag inside an HTML document to load it in the browser, or run it directly using a JS runtime like [Node.js](https://nodejs.org/en/), [Deno](https://deno.land/), or [Bun](https://bun.sh/).
+By default, the compiler outputs a file named `main.js`. You can include it in a `<script>` tag inside an HTML document to load it in the browser, or run it directly using a JS runtime like [Node.js](https://nodejs.org/), [Deno](https://deno.land/), or [Bun](https://bun.sh/).
 
 ## VS Code Extension
 
-To install the VS Code extension, simply run the `install-vscode-ext.sh` script.
+To install the VS Code extension, run `./dynasty-vscode/install.sh`.
 
 ## License
 
